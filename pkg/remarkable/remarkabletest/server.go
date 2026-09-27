@@ -304,10 +304,47 @@ func (s *Server) SetPageStrokes(id string, pdfPage int, rm []byte) {
 	if err := json.Unmarshal(files[id+".content"], &content); err != nil {
 		panic(err)
 	}
-	for _, p := range content.PageOrder() {
+	pages := content.PageOrder()
+	found := false
+	for _, p := range pages {
 		if p.PDFPage == pdfPage {
 			files[id+"/"+p.ID+".rm"] = rm
+			found = true
 		}
+	}
+	if !found {
+		ids := map[int]string{}
+		for _, p := range pages {
+			ids[p.PDFPage] = p.ID
+		}
+		last := pdfPage
+		for p := range ids {
+			last = max(last, p)
+		}
+		cPages := make([]any, 0, last+1)
+		for i := 0; i <= last; i++ {
+			pageID, ok := ids[i]
+			if !ok {
+				pageID = uuid.NewString()
+			}
+			cPages = append(cPages, map[string]any{
+				"id":    pageID,
+				"idx":   map[string]any{"timestamp": "1:2", "value": fmt.Sprintf("b%c", 'a'+i)},
+				"redir": map[string]any{"timestamp": "1:2", "value": i},
+			})
+			if i == pdfPage {
+				files[id+"/"+pageID+".rm"] = rm
+			}
+		}
+		var raw map[string]any
+		if err := json.Unmarshal(files[id+".content"], &raw); err != nil {
+			panic(err)
+		}
+		delete(raw, "pages")
+		delete(raw, "redirectionPageMap")
+		raw["cPages"] = map[string]any{"pages": cPages}
+		raw["pageCount"] = last + 1
+		files[id+".content"], _ = json.Marshal(raw)
 	}
 	s.writeItem(id, files)
 }

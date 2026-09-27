@@ -16,12 +16,12 @@ func letter(rotate int) PageBox { return PageBox{LLX: 0, LLY: 0, Rotate: rotate,
 
 func TestMapperRotations(t *testing.T) {
 	tests := []struct {
-		box    PageBox
-		name   string
-		wantX  float64
-		wantY  float64
-		x      float64
-		y      float64
+		box   PageBox
+		name  string
+		wantX float64
+		wantY float64
+		x     float64
+		y     float64
 	}{
 		{name: "top-left corner unrotated", box: letter(0), x: -612.0 * 226 / 144, y: 0, wantX: 0, wantY: 792},
 		{name: "centre unrotated", box: letter(0), x: 0, y: 396.0 * 226 / 72, wantX: 306, wantY: 396},
