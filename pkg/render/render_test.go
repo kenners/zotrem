@@ -37,7 +37,7 @@ func TestMapperRotations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := assert.New(t)
-			m := NewMapper(tt.box, 226)
+			m := NewMapper(tt.box)
 			x, y := m.ToUser(tt.x, tt.y)
 			a.InDelta(tt.wantX, x, 0.01)
 			a.InDelta(tt.wantY, y, 0.01)
@@ -62,7 +62,7 @@ func TestAnnotationsFromScene(t *testing.T) {
 	r := require.New(t)
 	scene := loadScene(t, "Color_and_tool_v3.14.4.rm")
 	page := PageScene{Box: letter(0), PageID: "page-1", PageIndex: 3, Scene: scene}
-	anns := Annotations(page, 229)
+	anns := Annotations(page)
 	r.NotEmpty(anns)
 	highlights, inks := 0, 0
 	keys := map[string]bool{}
@@ -104,7 +104,7 @@ func TestAnnotationsFromScene(t *testing.T) {
 func TestHighlighterStrokesBecomeHighlights(t *testing.T) {
 	a := assert.New(t)
 	scene := loadScene(t, "More_color_highlight_shader_v3.15.4.2.rm")
-	anns := Annotations(PageScene{Box: letter(0), PageID: "p", Scene: scene}, 226)
+	anns := Annotations(PageScene{Box: letter(0), PageID: "p", Scene: scene})
 	highlights := 0
 	for _, ann := range anns {
 		if ann.Kind == KindHighlight {
@@ -137,7 +137,7 @@ func TestAnnotatedPDF(t *testing.T) {
 	out, err := AnnotatedPDF(original, []PageScene{
 		{PageID: "a", PageIndex: 0, Scene: scene},
 		{PageID: "c", PageIndex: 2, Scene: highlighted},
-	}, 226)
+	})
 	r.NoError(err)
 	a.NotEqual(original, out)
 	count, err := PageCount(out)
@@ -149,7 +149,7 @@ func TestAnnotatedPDF(t *testing.T) {
 	a.InDelta(612, outBoxes[0].Width(), 0.01)
 	a.InDelta(792, outBoxes[2].DisplayWidth(), 0.01)
 
-	unchanged, err := AnnotatedPDF(original, []PageScene{{PageID: "b", PageIndex: 1, Scene: loadScene(t, "Normal_AB.rm")}}, 226)
+	unchanged, err := AnnotatedPDF(original, []PageScene{{PageID: "b", PageIndex: 1, Scene: loadScene(t, "Normal_AB.rm")}})
 	r.NoError(err)
 	a.Equal(original, unchanged)
 }
@@ -161,6 +161,4 @@ func TestStrokeWidths(t *testing.T) {
 	a.InDelta(15, StrokeWidth(&rm.Line{Tool: rm.ToolHighlighter2}), 0)
 	a.InDelta(1, StrokeOpacity(fine), 0)
 	a.Less(StrokeOpacity(&rm.Line{Tool: rm.ToolShader}), 0.5)
-	a.Equal("rm2", DeviceByKey("unknown").Key)
-	a.InDelta(229, DeviceByKey("rmpp").DPI, 0)
 }

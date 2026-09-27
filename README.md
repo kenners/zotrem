@@ -47,7 +47,7 @@ Then open http://localhost:8000 and:
    "Allow write access" and "Allow notes access". zotrem verifies the key and finds your user ID. For a group library,
    choose "Group library" and enter the group ID.
 2. **reMarkable** — open https://my.remarkable.com/device/browser/connect, sign in, and enter the one-time code.
-3. **Sync options** — pick the tag, folder, tablet model and sync interval.
+3. **Sync options** — pick the tag, folder and sync interval.
 
 Tag a paper in Zotero, press **Sync now** (or wait for the scheduler) and the PDF is on the tablet. After you have
 annotated it on the tablet, the next sync brings the annotations into Zotero.
@@ -90,8 +90,7 @@ details, including how reMarkable coordinates are mapped onto PDF pages.
 
 - Notebook pages inserted between PDF pages on the tablet are skipped; only annotations on the PDF's own pages are
   transferred.
-- Stroke placement assumes the tablet's default page fit. The device model setting selects the pixel density used for
-  the conversion (226 dpi for reMarkable 1/2/Paper Pure, 229 dpi for Paper Pro, 264 dpi for Paper Pro Move).
+- Stroke placement has been verified on a reMarkable Paper Pro with PDFs opened in the default page fit.
 - Typed text (the tablet's keyboard text tool) is not transferred.
 - Replacing a PDF in Zotero after it has been sent does not re-send it; remove and re-add the tag to send the new file.
 - The reMarkable cloud API is not officially documented; zotrem follows the protocol used by the community clients

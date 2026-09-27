@@ -14,7 +14,6 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/kenners/zotrem/pkg/db"
 	"github.com/kenners/zotrem/pkg/remarkable"
-	"github.com/kenners/zotrem/pkg/render"
 	"github.com/kenners/zotrem/pkg/server/httperr"
 	"github.com/kenners/zotrem/pkg/server/logging"
 	"github.com/kenners/zotrem/pkg/sync"
@@ -88,7 +87,6 @@ func (s *Server) Status() (ui.Status, error) {
 	status := ui.Status{
 		Configured:           settings.Configured(),
 		Counts:               counts,
-		Device:               render.DeviceByKey(settings.RemarkableDevice).Name,
 		Folder:               settings.RemarkableFolder,
 		LastRun:              latest,
 		NextRun:              "manual",
@@ -276,7 +274,6 @@ func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request, flash, err
 		return
 	}
 	s.render(w, r, ui.SettingsPage(ui.SettingsProps{
-		Devices:    render.Devices,
 		Error:      errMsg,
 		Flash:      flash,
 		Page:       page,
@@ -308,7 +305,6 @@ func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 	if folder := form("remarkable_folder"); folder != "" {
 		settings.RemarkableFolder = folder
 	}
-	settings.RemarkableDevice = render.DeviceByKey(form("remarkable_device")).Key
 	if interval, err := strconv.Atoi(form("sync_interval_minutes")); err == nil && interval >= 0 {
 		settings.SyncIntervalMinutes = interval
 	}

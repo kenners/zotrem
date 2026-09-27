@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/kenners/zotrem/pkg/db"
-	"github.com/kenners/zotrem/pkg/render"
 	"github.com/kenners/zotrem/pkg/ts"
 	"github.com/kenners/zotrem/uikit"
 	lucide "github.com/wux4an/lucide-templ/icons"
@@ -21,7 +20,6 @@ type NavCounts struct {
 type Status struct {
 	Configured           bool
 	Counts               map[string]int
-	Device               string
 	Folder               string
 	LastRun              *db.SyncRun
 	NextRun              string
@@ -75,7 +73,6 @@ type RunProps struct {
 
 type SettingsProps struct {
 	Page       PageProps
-	Devices    []render.Device
 	Error      string
 	Flash      string
 	PairingURL string

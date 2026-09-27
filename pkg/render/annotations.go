@@ -35,8 +35,8 @@ type PageScene struct {
 	Scene     *rm.Scene
 }
 
-func Annotations(page PageScene, dpi float64) []Annotation {
-	mapper := NewMapper(page.Box, dpi)
+func Annotations(page PageScene) []Annotation {
+	mapper := NewMapper(page.Box)
 	var out []Annotation
 	if page.Scene == nil {
 		return out

@@ -292,14 +292,6 @@ templ SettingsPage(p SettingsProps) {
 					<input type="text" name="remarkable_folder" value={ p.Settings.RemarkableFolder } required/>
 				</label>
 				<label>
-					<span>reMarkable model (sets the stroke scale)</span>
-					<select name="remarkable_device">
-						for _, d := range p.Devices {
-							<option value={ d.Key } selected?={ d.Key == p.Settings.RemarkableDevice }>{ d.Name }</option>
-						}
-					</select>
-				</label>
-				<label>
 					<span>Sync every N minutes (0 = manual only)</span>
 					<input type="number" name="sync_interval_minutes" min="0" value={ itoa(p.Settings.SyncIntervalMinutes) }/>
 				</label>

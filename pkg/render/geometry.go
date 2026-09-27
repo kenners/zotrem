@@ -5,32 +5,7 @@ import (
 	"sort"
 )
 
-type Device struct {
-	DPI    float64
-	Height int
-	Key    string
-	Name   string
-	Width  int
-}
-
-var Devices = []Device{
-	{DPI: 226, Height: 1872, Key: "rm2", Name: "reMarkable 2", Width: 1404},
-	{DPI: 226, Height: 1872, Key: "rm1", Name: "reMarkable 1", Width: 1404},
-	{DPI: 226, Height: 1872, Key: "rmpure", Name: "reMarkable Paper Pure", Width: 1404},
-	{DPI: 229, Height: 2160, Key: "rmpp", Name: "reMarkable Paper Pro", Width: 1620},
-	{DPI: 264, Height: 1696, Key: "rmppm", Name: "reMarkable Paper Pro Move", Width: 954},
-}
-
-const DefaultDeviceKey = "rm2"
-
-func DeviceByKey(key string) Device {
-	for _, d := range Devices {
-		if d.Key == key {
-			return d
-		}
-	}
-	return Devices[0]
-}
+const SceneUnitsPerInch = 226.0
 
 type PageBox struct {
 	LLX    float64
@@ -70,8 +45,8 @@ type Mapper struct {
 	Scale float64
 }
 
-func NewMapper(box PageBox, dpi float64) Mapper {
-	return Mapper{Box: box, Scale: 72 / dpi}
+func NewMapper(box PageBox) Mapper {
+	return Mapper{Box: box, Scale: 72 / SceneUnitsPerInch}
 }
 
 func (m Mapper) ToDisplay(x, y float64) (float64, float64) {

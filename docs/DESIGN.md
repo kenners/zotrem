@@ -53,12 +53,12 @@ Failures are recorded per document (`zotrem:error` tag, error text in the UI) an
 
 ## Geometry
 
-reMarkable v6 scene coordinates are device pixels of the source page: x is centred on the page (`0` is the page
-centre, negative to the left), y grows downward from the page top, and one unit is `1/dpi` inch (226 dpi for
-reMarkable 1/2/Paper Pure, 229 for Paper Pro, 264 for Paper Pro Move). A PDF page of `W × H` points therefore spans
-`-W·dpi/144 … W·dpi/144` horizontally. zotrem maps a scene point `(x, y)` on a page whose displayed CropBox is
-`W × H` to PDF user space `(llx + W/2 + x·72/dpi, lly + H − y·72/dpi)`, then undoes the page `/Rotate`. Zoom modes
-do not change stored coordinates. The device (and hence dpi) is a setting.
+reMarkable v6 scene coordinates are pixels of the source page at a fixed 226 units per inch: x is centred on the
+page (`0` is the page centre, negative to the left) and y grows downward from the page top. A PDF page of `W × H`
+points therefore spans `-W·226/144 … W·226/144` horizontally. zotrem maps a scene point `(x, y)` on a page whose
+displayed CropBox is `W × H` to PDF user space `(llx + W/2 + x·72/226, lly + H − y·72/226)`, then undoes the page
+`/Rotate`. Zoom modes do not change stored coordinates. The 226 scale was verified live on a reMarkable Paper Pro
+(whose screen is 229 dpi), so it does not depend on the device model.
 
 ## State tags
 

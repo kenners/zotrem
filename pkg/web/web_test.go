@@ -103,7 +103,6 @@ func TestSettingsFlow(t *testing.T) {
 		"tag_send":              {"to-tablet"},
 		"tag_prefix":            {"rm:"},
 		"remarkable_folder":     {"Papers"},
-		"remarkable_device":     {"rmpp"},
 		"sync_interval_minutes": {"30"},
 		"annotated_pdf":         {"true"},
 	})
@@ -114,7 +113,6 @@ func TestSettingsFlow(t *testing.T) {
 	a.Equal("to-tablet", settings.TagSend)
 	a.Equal("rm:", settings.TagPrefix)
 	a.Equal("Papers", settings.RemarkableFolder)
-	a.Equal("rmpp", settings.RemarkableDevice)
 	a.Equal(30, settings.SyncIntervalMinutes)
 	a.True(settings.AnnotatedPDF)
 	a.False(settings.WriteAnnotations)

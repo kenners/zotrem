@@ -11,7 +11,6 @@ import (
 
 const (
 	KeyAnnotatedPDF          = "annotated_pdf"
-	KeyRemarkableDevice      = "remarkable_device"
 	KeyRemarkableDeviceToken = "remarkable_device_token"
 	KeyRemarkableFolder      = "remarkable_folder"
 	KeyRemarkableUserToken   = "remarkable_user_token"
@@ -29,7 +28,6 @@ const (
 
 type Settings struct {
 	AnnotatedPDF          bool
-	RemarkableDevice      string
 	RemarkableDeviceToken string
 	RemarkableFolder      string
 	RemarkableUserToken   string
@@ -48,7 +46,6 @@ type Settings struct {
 func DefaultSettings() Settings {
 	return Settings{
 		AnnotatedPDF:        true,
-		RemarkableDevice:    "rm2",
 		RemarkableFolder:    "Zotero",
 		SyncIntervalMinutes: 15,
 		TagPrefix:           "zotrem:",
@@ -71,7 +68,6 @@ func (s Settings) StateTag(state string) string { return s.TagPrefix + state }
 func (s Settings) values() map[string]string {
 	return map[string]string{
 		KeyAnnotatedPDF:          strconv.FormatBool(s.AnnotatedPDF),
-		KeyRemarkableDevice:      s.RemarkableDevice,
 		KeyRemarkableDeviceToken: s.RemarkableDeviceToken,
 		KeyRemarkableFolder:      s.RemarkableFolder,
 		KeyRemarkableUserToken:   s.RemarkableUserToken,
@@ -94,8 +90,6 @@ func settingsFromRows(rows []sqlite.Setting) Settings {
 		switch row.Key {
 		case KeyAnnotatedPDF:
 			s.AnnotatedPDF = row.Value == "true"
-		case KeyRemarkableDevice:
-			s.RemarkableDevice = row.Value
 		case KeyRemarkableDeviceToken:
 			s.RemarkableDeviceToken = row.Value
 		case KeyRemarkableFolder:

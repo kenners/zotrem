@@ -45,7 +45,7 @@ func PageCount(pdf []byte) (int, error) {
 	return count, nil
 }
 
-func Overlay(boxes []PageBox, pages []PageScene, dpi float64) ([]byte, bool, error) {
+func Overlay(boxes []PageBox, pages []PageScene) ([]byte, bool, error) {
 	byPage := map[int]PageScene{}
 	for _, p := range pages {
 		if p.Scene != nil && p.PageIndex >= 0 && p.PageIndex < len(boxes) {
@@ -62,7 +62,7 @@ func Overlay(boxes []PageBox, pages []PageScene, dpi float64) ([]byte, bool, err
 		if !ok {
 			continue
 		}
-		mapper := NewMapper(box, dpi)
+		mapper := NewMapper(box)
 		for _, layer := range page.Scene.Layers() {
 			if !layer.Visible {
 				continue
@@ -123,7 +123,7 @@ func drawLine(doc *fpdf.Fpdf, mapper Mapper, line *rm.Line) bool {
 	return true
 }
 
-func AnnotatedPDF(original []byte, pages []PageScene, dpi float64) ([]byte, error) {
+func AnnotatedPDF(original []byte, pages []PageScene) ([]byte, error) {
 	boxes, err := PageBoxes(original)
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func AnnotatedPDF(original []byte, pages []PageScene, dpi float64) ([]byte, erro
 			pages[i].Box = boxes[pages[i].PageIndex]
 		}
 	}
-	overlay, drawn, err := Overlay(boxes, pages, dpi)
+	overlay, drawn, err := Overlay(boxes, pages)
 	if err != nil {
 		return nil, err
 	}

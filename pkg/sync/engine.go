@@ -461,7 +461,6 @@ func (r *run) readDocument(doc db.Document, item remarkable.Item) (*pulled, erro
 	if err != nil {
 		return nil, err
 	}
-	device := render.DeviceByKey(r.settings.RemarkableDevice)
 	out := &pulled{pdf: pdf}
 	for _, page := range content.PageOrder() {
 		data, ok, err := rmDoc.PageFile(r.ctx, page.ID)
@@ -488,7 +487,7 @@ func (r *run) readDocument(doc db.Document, item remarkable.Item) (*pulled, erro
 		}
 		ps := render.PageScene{Box: boxes[page.PDFPage], PageID: page.ID, PageIndex: page.PDFPage, Scene: scene}
 		out.scenes = append(out.scenes, ps)
-		out.annotations = append(out.annotations, render.Annotations(ps, device.DPI)...)
+		out.annotations = append(out.annotations, render.Annotations(ps)...)
 	}
 	sigs := make([]string, 0, len(out.annotations))
 	for _, a := range out.annotations {
@@ -633,8 +632,7 @@ func annotatedFilename(filename, title string) string {
 }
 
 func (r *run) uploadAnnotatedPDF(doc *db.Document, result *pulled) error {
-	device := render.DeviceByKey(r.settings.RemarkableDevice)
-	annotated, err := render.AnnotatedPDF(result.pdf, result.scenes, device.DPI)
+	annotated, err := render.AnnotatedPDF(result.pdf, result.scenes)
 	if err != nil {
 		return errors.Wrap(err, "render annotated pdf")
 	}
