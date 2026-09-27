@@ -47,8 +47,8 @@ func (c *Client) putJSON(ctx context.Context, name string, v any) (Entry, error)
 	return FileEntry(name, data), nil
 }
 
-func (c *Client) putItemIndex(ctx context.Context, id string, files []Entry, schema int) (Entry, error) {
-	data, entry, err := EncodeIndex(id, files, schema)
+func (c *Client) putItemIndex(ctx context.Context, id string, files []Entry) (Entry, error) {
+	data, entry, err := EncodeIndex(id, files, 4)
 	if err != nil {
 		return Entry{}, err
 	}
@@ -105,10 +105,6 @@ type PutPDFOptions struct {
 }
 
 func (c *Client) PutPDF(ctx context.Context, visibleName string, pdf []byte, opts PutPDFOptions) (Entry, error) {
-	root, err := c.Root(ctx)
-	if err != nil {
-		return Entry{}, err
-	}
 	id := uuid.NewString()
 	now := nowMillis()
 	metadata := Metadata{
@@ -158,7 +154,7 @@ func (c *Client) PutPDF(ctx context.Context, visibleName string, pdf []byte, opt
 		return Entry{}, errors.Wrap(err, "upload pdf")
 	}
 	files := []Entry{contentEntry, metadataEntry, FileEntry(id+".pagedata", pagedata), FileEntry(id+".pdf", pdf)}
-	docEntry, err := c.putItemIndex(ctx, id, files, root.SchemaVersion)
+	docEntry, err := c.putItemIndex(ctx, id, files)
 	if err != nil {
 		return Entry{}, err
 	}
@@ -171,10 +167,6 @@ func (c *Client) PutPDF(ctx context.Context, visibleName string, pdf []byte, opt
 }
 
 func (c *Client) CreateFolder(ctx context.Context, visibleName, parent string) (Entry, error) {
-	root, err := c.Root(ctx)
-	if err != nil {
-		return Entry{}, err
-	}
 	id := uuid.NewString()
 	now := nowMillis()
 	metadata := Metadata{
@@ -193,7 +185,7 @@ func (c *Client) CreateFolder(ctx context.Context, visibleName, parent string) (
 	if err != nil {
 		return Entry{}, err
 	}
-	folderEntry, err := c.putItemIndex(ctx, id, []Entry{contentEntry, metadataEntry}, root.SchemaVersion)
+	folderEntry, err := c.putItemIndex(ctx, id, []Entry{contentEntry, metadataEntry})
 	if err != nil {
 		return Entry{}, err
 	}
@@ -238,7 +230,7 @@ func (c *Client) EditMetadata(ctx context.Context, id string, edit func(*Metadat
 			}
 		}
 		files = append(files, metadataEntry)
-		updated, err = c.putItemIndex(ctx, id, files, doc.Index.Schema)
+		updated, err = c.putItemIndex(ctx, id, files)
 		if err != nil {
 			return nil, err
 		}
