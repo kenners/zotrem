@@ -2,7 +2,8 @@ version: 2
 
 before:
   hooks:
-    - go generate ./...
+    - go generate ./pkg/db/... ./pkg/ui/... ./uikit/...
+    - go generate ./pkg/api/...
     - go mod tidy
 
 builds:

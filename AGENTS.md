@@ -26,7 +26,7 @@ Build and dev tasks run through [mage](https://magefile.org); Go tools are invok
 
 - `mage build` — build `cmd/zotrem`
 - `mage dev` — hot-reload dev server via air
-- `mage generate` — run all code generation (`go generate ./...`)
+- `mage generate` — run all code generation (sqlc and templ first, then the OpenAPI spec, which imports the generated packages; plain `go generate ./...` fails on a clean checkout)
 - `go test ./...` — run tests (browser tests need Chromium; set `ROD_BROWSER_BIN` if it is not on a standard path)
 
 Never hand-edit generated code. `mage build` regenerates before compiling; edit the source instead:
