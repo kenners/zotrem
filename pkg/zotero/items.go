@@ -15,7 +15,10 @@ const (
 const (
 	LinkModeImportedFile = "imported_file"
 	LinkModeImportedURL  = "imported_url"
+	LinkModeLinkedFile   = "linked_file"
 )
+
+const LinkedAttachmentPrefix = "attachments:"
 
 const (
 	AnnotationHighlight = "highlight"
@@ -55,6 +58,7 @@ type ItemData struct {
 	ItemType            string          `json:"itemType"`
 	Key                 string          `json:"key,omitempty"`
 	LinkMode            string          `json:"linkMode,omitempty"`
+	Path                string          `json:"path,omitempty"`
 	MD5                 string          `json:"md5,omitempty"`
 	Mtime               json.RawMessage `json:"mtime,omitempty"`
 	Note                string          `json:"note,omitempty"`
@@ -78,6 +82,14 @@ func (d ItemData) IsStoredPDF() bool {
 		strings.EqualFold(d.ContentType, "application/pdf") &&
 		(d.LinkMode == LinkModeImportedFile || d.LinkMode == LinkModeImportedURL)
 }
+
+func (d ItemData) IsLinkedPDF() bool {
+	return d.ItemType == ItemTypeAttachment &&
+		strings.EqualFold(d.ContentType, "application/pdf") &&
+		d.LinkMode == LinkModeLinkedFile
+}
+
+func (d ItemData) IsPDF() bool { return d.IsStoredPDF() || d.IsLinkedPDF() }
 
 func (d ItemData) IsRegularItem() bool {
 	switch d.ItemType {

@@ -104,6 +104,7 @@ func TestSettingsFlow(t *testing.T) {
 		"tag_prefix":            {"rm:"},
 		"remarkable_folder":     {"Papers"},
 		"sync_interval_minutes": {"30"},
+		"linked_files_dir":      {"/tmp/linked"},
 		"annotated_pdf":         {"true"},
 	})
 	r.NoError(err)
@@ -114,6 +115,7 @@ func TestSettingsFlow(t *testing.T) {
 	a.Equal("rm:", settings.TagPrefix)
 	a.Equal("Papers", settings.RemarkableFolder)
 	a.Equal(30, settings.SyncIntervalMinutes)
+	a.Equal("/tmp/linked", settings.LinkedFilesDir)
 	a.True(settings.AnnotatedPDF)
 	a.False(settings.WriteAnnotations)
 
