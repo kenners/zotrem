@@ -1,0 +1,16 @@
+root = "."
+tmp_dir = "tmp/zotrem"
+
+[build]
+  cmd = "go generate ./pkg/db/... ./pkg/ui/... ./uikit/... && go build -o ./tmp/zotrem/zotrem ./cmd/zotrem"
+  entrypoint = ["./tmp/zotrem/zotrem", "serve"]
+  delay = 200
+  exclude_dir = ["pkg/db/internal", "tmp"]
+  exclude_regex = ["_templ\\.go$", "_test\\.go$"]
+  include_ext = ["css", "go", "html", "js", "sql", "templ"]
+  kill_delay = "2s"
+  send_interrupt = true
+  stop_on_error = true
+
+[misc]
+  clean_on_exit = true
