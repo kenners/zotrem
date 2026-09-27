@@ -34,13 +34,15 @@ Every run (manual "Sync now" or the scheduler, default every 15 minutes):
 2. **Push** — for every tagged PDF without a mapping: download the file, upload it into the reMarkable folder with
    the low-level put API (new document id, `.content`, `.metadata`, `.pagedata`, `.pdf`, document index, root index,
    `PUT /sync/v3/root` with the current generation), store the mapping, tag the parent `zotrem:synced`.
-3. **Pull** — read the root index once. For every mapped document whose index hash changed: fetch `.content`,
+3. **Pull** — read the root index once (item metadata is cached by hash in SQLite, so unchanged items cost no
+   requests). For every mapped document whose index hash changed: fetch `.content` and the tablet's copy of the PDF,
    resolve page order (`cPages` sorted by `idx`, skipping deleted, `redir` → original PDF page; legacy `pages` +
-   `redirectionPageMap`), parse each page's `.rm`, project strokes and highlights into PDF coordinates, then
+   `redirectionPageMap`), parse each page's `.rm`, project strokes and highlights into PDF coordinates, then compute a
+   signature of the result; when the signature is unchanged (the document was merely opened) nothing is written. Else
    - diff the resulting annotation set against the annotations zotrem previously created (keyed by the CRDT id of the
      stroke/highlight) and create/delete Zotero annotation items accordingly (user edits to comments survive);
-   - regenerate the annotated PDF and upload it as `<name> (reMarkable).pdf` (created once, then replaced with
-     `If-Match`);
+   - regenerate the annotated PDF (stroke overlay drawn with fpdf, stamped onto the original with pdfcpu) and upload it
+     as `<name> (reMarkable).pdf` (created once, then replaced with `If-Match`);
    - tag the parent `zotrem:annotated`, store the new hash.
    Documents that are gone from the root index or sit in `trash` are marked removed: the send tag is removed and
    `zotrem:removed` added.
