@@ -43,7 +43,9 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("zotero %s %s: %d %s", e.Method, e.Path, e.Status, strings.TrimSpace(e.Body))
 }
 
-func WithBaseURL(base string) Option { return func(c *Client) { c.baseURL = strings.TrimRight(base, "/") } }
+func WithBaseURL(base string) Option {
+	return func(c *Client) { c.baseURL = strings.TrimRight(base, "/") }
+}
 
 func WithHTTPClient(h *http.Client) Option { return func(c *Client) { c.http = h } }
 

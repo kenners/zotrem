@@ -3,10 +3,12 @@ module github.com/kenners/zotrem
 go 1.26.3
 
 require (
+	codeberg.org/go-pdf/fpdf v0.12.0
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/a-h/templ v0.3.1020
 	github.com/cockroachdb/errors v1.13.0
 	github.com/go-rod/rod v0.116.2
+	github.com/google/uuid v1.6.0
 	github.com/magefile/mage v1.17.2
 	github.com/stretchr/testify v1.11.1
 	modernc.org/sqlite v1.52.0
@@ -44,7 +46,6 @@ require (
 	github.com/gohugoio/hashstructure v0.6.0 // indirect
 	github.com/gohugoio/hugo v0.164.0 // indirect
 	github.com/google/cel-go v0.28.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect

@@ -42,11 +42,11 @@ func (h nodeHeap) Less(i, j int) bool {
 	}
 	return h[i].id.Part2 < h[j].id.Part2
 }
-func (h nodeHeap) Swap(i, j int)  { h[i], h[j] = h[j], h[i] }
-func (h *nodeHeap) Push(x any)    { *h = append(*h, x.(orderNode)) }
-func (h *nodeHeap) Pop() any      { old := *h; n := len(old); x := old[n-1]; *h = old[:n-1]; return x }
-func startNode() orderNode        { return orderNode{kind: 0} }
-func endNode() orderNode          { return orderNode{kind: 2} }
+func (h nodeHeap) Swap(i, j int)   { h[i], h[j] = h[j], h[i] }
+func (h *nodeHeap) Push(x any)     { *h = append(*h, x.(orderNode)) }
+func (h *nodeHeap) Pop() any       { old := *h; n := len(old); x := old[n-1]; *h = old[:n-1]; return x }
+func startNode() orderNode         { return orderNode{kind: 0} }
+func endNode() orderNode           { return orderNode{kind: 2} }
 func itemNode(id CrdtID) orderNode { return orderNode{id: id, kind: 1, valid: true} }
 
 func (s *Sequence) Order() []CrdtID {
