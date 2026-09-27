@@ -227,6 +227,15 @@ func (r *run) discover() ([]candidate, error) {
 	}
 	var out []candidate
 	seen := map[string]bool{}
+	docs, err := r.engine.store.ListDocuments()
+	if err != nil {
+		return nil, err
+	}
+	for _, doc := range docs {
+		if doc.AnnotatedKey != "" {
+			seen[doc.AnnotatedKey] = true
+		}
+	}
 	for _, item := range tagged {
 		switch {
 		case item.Data.IsStoredPDF():
@@ -241,7 +250,7 @@ func (r *run) discover() ([]candidate, error) {
 				continue
 			}
 			for _, child := range children {
-				if child.Data.IsStoredPDF() && !seen[child.Key] {
+				if child.Data.IsStoredPDF() && !seen[child.Key] && !isAnnotatedCopy(child) {
 					seen[child.Key] = true
 					out = append(out, candidate{Attachment: child, Holder: item})
 				}
@@ -250,6 +259,10 @@ func (r *run) discover() ([]candidate, error) {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Attachment.Key < out[j].Attachment.Key })
 	return out, nil
+}
+
+func isAnnotatedCopy(item zotero.Item) bool {
+	return strings.HasSuffix(item.Data.Filename, annotatedSuffix)
 }
 
 func (r *run) push(candidates []candidate) {
@@ -606,6 +619,8 @@ func (r *run) syncAnnotations(doc db.Document, annotations []render.Annotation) 
 	return nil
 }
 
+const annotatedSuffix = " (reMarkable).pdf"
+
 func annotatedFilename(filename, title string) string {
 	base := strings.TrimSuffix(filename, ".pdf")
 	if base == "" {
@@ -614,7 +629,7 @@ func annotatedFilename(filename, title string) string {
 	if base == "" {
 		base = "document"
 	}
-	return base + " (reMarkable).pdf"
+	return base + annotatedSuffix
 }
 
 func (r *run) uploadAnnotatedPDF(doc *db.Document, result *pulled) error {

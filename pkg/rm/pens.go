@@ -50,12 +50,12 @@ var palette = map[Color]RGBA{
 	ColorGrayOverlap: {R: 125, G: 125, B: 125, A: 255},
 	ColorGreen:       {R: 0, G: 255, B: 0, A: 255},
 	ColorGreen2:      {R: 161, G: 216, B: 125, A: 255},
-	ColorHighlight:   {R: 251, G: 247, B: 25, A: 255},
+	ColorHighlight:   {R: 255, G: 212, B: 0, A: 255},
 	ColorMagenta:     {R: 183, G: 130, B: 205, A: 255},
 	ColorPink:        {R: 255, G: 192, B: 203, A: 255},
 	ColorRed:         {R: 179, G: 62, B: 57, A: 255},
 	ColorWhite:       {R: 255, G: 255, B: 255, A: 255},
-	ColorYellow:      {R: 251, G: 247, B: 25, A: 255},
+	ColorYellow:      {R: 255, G: 212, B: 0, A: 255},
 	ColorYellow2:     {R: 247, G: 232, B: 81, A: 255},
 }
 
@@ -100,7 +100,24 @@ func (c Color) RGBA() RGBA {
 	return palette[ColorBlack]
 }
 
+func (c RGBA) IsDark() bool {
+	return 0.299*float64(c.R)+0.587*float64(c.G)+0.114*float64(c.B) < 64
+}
+
+func highlightColor(rgba *RGBA, index Color) RGBA {
+	if rgba != nil && !rgba.IsDark() {
+		return *rgba
+	}
+	if index == ColorBlack || index == ColorGray || index == ColorGrayOverlap || index == ColorWhite {
+		return palette[ColorHighlight]
+	}
+	return index.RGBA()
+}
+
 func (l *Line) EffectiveColor() RGBA {
+	if l.Tool.IsHighlighter() {
+		return highlightColor(l.RGBA, l.Color)
+	}
 	if l.RGBA != nil {
 		return *l.RGBA
 	}
@@ -108,8 +125,5 @@ func (l *Line) EffectiveColor() RGBA {
 }
 
 func (g *GlyphRange) EffectiveColor() RGBA {
-	if g.RGBA != nil {
-		return *g.RGBA
-	}
-	return g.Color.RGBA()
+	return highlightColor(g.RGBA, g.Color)
 }

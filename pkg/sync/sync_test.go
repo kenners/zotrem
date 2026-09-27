@@ -157,6 +157,8 @@ func TestPullAnnotations(t *testing.T) {
 	requestsBefore := len(f.zot.Requests)
 	run = f.run(t)
 	a.Equal(0, run.Pulled)
+	a.Equal(0, run.Pushed, "the annotated copy must not be sent to the tablet")
+	a.Len(f.folderChildren(t), 1)
 	a.Len(f.zot.ChildrenOf(att.Key), 31)
 	a.Less(len(f.zot.Requests)-requestsBefore, 6, "an unchanged scene must not write to zotero")
 

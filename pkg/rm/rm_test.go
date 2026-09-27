@@ -96,7 +96,7 @@ func TestLegacyGlyphRange(t *testing.T) {
 	a.Equal("The reMarkable uses electronic paper", highlights[0].Text)
 	a.Equal(ColorYellow, highlights[0].Color)
 	a.Nil(highlights[0].RGBA)
-	a.Equal("#fbf719", highlights[0].EffectiveColor().Hex())
+	a.Equal("#ffd400", highlights[0].EffectiveColor().Hex())
 	a.NotNil(highlights[0].Start)
 	a.Equal(uint32(821), *highlights[0].Start)
 }
@@ -138,4 +138,14 @@ func TestParseRejectsGarbage(t *testing.T) {
 	assert.Error(t, err)
 	_, err = Parse([]byte(headerV6 + "\x10\x00\x00\x00"))
 	assert.Error(t, err)
+}
+
+func TestHighlightColorFallsBackWhenStoredBlack(t *testing.T) {
+	a := assert.New(t)
+	black := &RGBA{A: 255}
+	a.Equal("#ffd400", (&GlyphRange{Color: ColorYellow, RGBA: black}).EffectiveColor().Hex())
+	a.Equal("#ffd400", (&GlyphRange{Color: ColorBlack, RGBA: black}).EffectiveColor().Hex())
+	a.Equal("#ffed75", (&GlyphRange{Color: ColorHighlight, RGBA: &RGBA{R: 255, G: 237, B: 117, A: 255}}).EffectiveColor().Hex())
+	a.Equal("#ffd400", (&Line{Color: ColorBlack, Tool: ToolHighlighter2}).EffectiveColor().Hex())
+	a.Equal("#000000", (&Line{Color: ColorBlack, Tool: ToolBallpoint2}).EffectiveColor().Hex())
 }
