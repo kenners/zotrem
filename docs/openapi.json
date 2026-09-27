@@ -1,0 +1,530 @@
+{
+	"components": {
+		"schemas": {
+			"Document": {
+				"description": "Document schema",
+				"properties": {
+					"annotatedKey": {
+						"type": "string"
+					},
+					"annotationCount": {
+						"type": "integer"
+					},
+					"filename": {
+						"type": "string"
+					},
+					"id": {
+						"format": "int64",
+						"type": "integer"
+					},
+					"lastError": {
+						"type": "string"
+					},
+					"lastPulledAt": {
+						"format": "date-time",
+						"nullable": true,
+						"type": "string"
+					},
+					"lastPushedAt": {
+						"format": "date-time",
+						"nullable": true,
+						"type": "string"
+					},
+					"remarkableId": {
+						"type": "string"
+					},
+					"state": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"updatedAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"zoteroKey": {
+						"type": "string"
+					},
+					"zoteroParentKey": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"annotationCount",
+					"filename",
+					"id",
+					"state",
+					"title",
+					"updatedAt",
+					"zoteroKey"
+				],
+				"type": "object"
+			},
+			"ErrorItem": {
+				"properties": {
+					"more": {
+						"additionalProperties": {
+							"description": "Additional information about the error"
+						},
+						"description": "Additional information about the error",
+						"type": [
+							"object",
+							"null"
+						]
+					},
+					"name": {
+						"description": "For example, name of the parameter that caused the error",
+						"type": "string"
+					},
+					"reason": {
+						"description": "Human readable error message",
+						"type": "string"
+					}
+				},
+				"required": [
+					"name",
+					"reason"
+				],
+				"type": "object"
+			},
+			"HTTPError": {
+				"description": "HTTPError schema",
+				"properties": {
+					"detail": {
+						"description": "Human readable error message",
+						"type": "string"
+					},
+					"errors": {
+						"items": {
+							"$ref": "#/components/schemas/ErrorItem"
+						},
+						"type": [
+							"array",
+							"null"
+						]
+					},
+					"instance": {
+						"type": "string"
+					},
+					"status": {
+						"description": "HTTP status code",
+						"example": 403,
+						"type": "integer"
+					},
+					"title": {
+						"description": "Short title of the error",
+						"type": "string"
+					},
+					"type": {
+						"description": "URL of the error type. Can be used to lookup the error in a documentation",
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"Run": {
+				"properties": {
+					"error": {
+						"type": "string"
+					},
+					"finishedAt": {
+						"format": "date-time",
+						"nullable": true,
+						"type": "string"
+					},
+					"id": {
+						"format": "int64",
+						"type": "integer"
+					},
+					"pulled": {
+						"type": "integer"
+					},
+					"pushed": {
+						"type": "integer"
+					},
+					"removed": {
+						"type": "integer"
+					},
+					"startedAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"status": {
+						"type": "string"
+					},
+					"trigger": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"pulled",
+					"pushed",
+					"removed",
+					"startedAt",
+					"status",
+					"trigger"
+				],
+				"type": "object"
+			},
+			"Status": {
+				"description": "Status schema",
+				"properties": {
+					"configured": {
+						"type": "boolean"
+					},
+					"counts": {
+						"additionalProperties": {
+							"type": "integer"
+						},
+						"type": [
+							"object",
+							"null"
+						]
+					},
+					"lastRun": {
+						"$ref": "#/components/schemas/Run"
+					},
+					"nextRunAt": {
+						"format": "date-time",
+						"nullable": true,
+						"type": "string"
+					},
+					"remarkable": {
+						"type": "boolean"
+					},
+					"running": {
+						"type": "boolean"
+					},
+					"version": {
+						"type": "string"
+					},
+					"zotero": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"configured",
+					"counts",
+					"remarkable",
+					"running",
+					"version",
+					"zotero"
+				],
+				"type": "object"
+			},
+			"SyncResponse": {
+				"description": "SyncResponse schema",
+				"properties": {
+					"message": {
+						"type": "string"
+					},
+					"started": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"message",
+					"started"
+				],
+				"type": "object"
+			}
+		}
+	},
+	"info": {
+		"description": "REST API for zotrem: sync status, synced documents and manual sync runs.",
+		"title": "zotrem API",
+		"version": "1.0.0"
+	},
+	"openapi": "3.1.0",
+	"paths": {
+		"/api/documents": {
+			"get": {
+				"description": "#### Controller: \n\n`github.com/kenners/zotrem/pkg/api.handlers.documents`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
+				"operationId": "GET_/api/documents",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Accept",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/Document"
+									},
+									"type": "array"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/Document"
+									},
+									"type": "array"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							}
+						},
+						"description": "Bad Request _(validation or deserialization error)_"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							}
+						},
+						"description": "Internal Server Error _(panics)_"
+					}
+				},
+				"summary": "List synced documents",
+				"tags": [
+					"documents"
+				]
+			}
+		},
+		"/api/runs": {
+			"get": {
+				"description": "#### Controller: \n\n`github.com/kenners/zotrem/pkg/api.handlers.runs`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
+				"operationId": "GET_/api/runs",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Accept",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/Run"
+									},
+									"type": "array"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/Run"
+									},
+									"type": "array"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							}
+						},
+						"description": "Bad Request _(validation or deserialization error)_"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							}
+						},
+						"description": "Internal Server Error _(panics)_"
+					}
+				},
+				"summary": "List recent sync runs",
+				"tags": [
+					"runs"
+				]
+			}
+		},
+		"/api/status": {
+			"get": {
+				"description": "#### Controller: \n\n`github.com/kenners/zotrem/pkg/api.handlers.status`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
+				"operationId": "GET_/api/status",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Accept",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Status"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/Status"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							}
+						},
+						"description": "Bad Request _(validation or deserialization error)_"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							}
+						},
+						"description": "Internal Server Error _(panics)_"
+					}
+				},
+				"summary": "Sync status",
+				"tags": [
+					"status"
+				]
+			}
+		},
+		"/api/sync": {
+			"post": {
+				"description": "#### Controller: \n\n`github.com/kenners/zotrem/pkg/api.handlers.sync`\n\n#### Middlewares:\n\n- `github.com/go-fuego/fuego.defaultLogger.middleware`\n\n---\n\n",
+				"operationId": "POST_/api/sync",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Accept",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SyncResponse"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/SyncResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							}
+						},
+						"description": "Bad Request _(validation or deserialization error)_"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPError"
+								}
+							}
+						},
+						"description": "Internal Server Error _(panics)_"
+					}
+				},
+				"summary": "Start a sync run",
+				"tags": [
+					"runs"
+				]
+			}
+		}
+	},
+	"tags": [
+		{
+			"name": "documents"
+		},
+		{
+			"name": "runs"
+		},
+		{
+			"name": "status"
+		}
+	]
+}

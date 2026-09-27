@@ -1,0 +1,326 @@
+package ui
+
+import (
+	"github.com/kenners/zotrem/pkg/db"
+	lucide "github.com/wux4an/lucide-templ/icons"
+)
+
+templ Dashboard(p DashboardProps) {
+	@Layout(p.Page) {
+		if !p.Page.Status.Configured {
+			<div class="z-card">
+				<h2>Welcome to zotrem</h2>
+				<p class="z-muted">
+					zotrem sends the PDFs you tag in Zotero to your reMarkable and brings the annotations you make on the tablet back into Zotero.
+					Connect both services in <a href="/settings">Settings</a> to get started.
+				</p>
+				<ul class="setup-list">
+					<li class="setup-row">
+						if p.Page.Status.ZoteroConfigured {
+							@lucide.CircleCheck()
+						} else {
+							@lucide.Circle()
+						}
+						<div class="setup-body"><div class="setup-title">Zotero API key</div><div class="setup-hint">Create a key with read/write and file access at zotero.org/settings/keys.</div></div>
+					</li>
+					<li class="setup-row">
+						if p.Page.Status.RemarkableConfigured {
+							@lucide.CircleCheck()
+						} else {
+							@lucide.Circle()
+						}
+						<div class="setup-body"><div class="setup-title">reMarkable pairing</div><div class="setup-hint">Enter a one-time code from my.remarkable.com.</div></div>
+					</li>
+				</ul>
+			</div>
+		}
+		<div class="z-cards">
+			<div class="z-card">
+				<div class="z-stat-label">On reMarkable</div>
+				<div class="z-stat-value">{ itoa(countOf(p.Page.Status.Counts, db.StateSynced) + countOf(p.Page.Status.Counts, db.StateAnnotated)) }</div>
+				<div class="z-stat-hint">{ itoa(countOf(p.Page.Status.Counts, db.StateAnnotated)) } with annotations</div>
+			</div>
+			<div class="z-card">
+				<div class="z-stat-label">Errors</div>
+				<div class="z-stat-value">{ itoa(countOf(p.Page.Status.Counts, db.StateError)) }</div>
+				<div class="z-stat-hint">documents needing attention</div>
+			</div>
+			<div class="z-card">
+				<div class="z-stat-label">Last sync</div>
+				if p.Page.Status.LastRun != nil {
+					<div class="z-stat-value">{ Ago(p.Page.Status.LastRun.StartedAt.Time) }</div>
+					<div class="z-stat-hint">{ RunSummary(*p.Page.Status.LastRun) }</div>
+				} else {
+					<div class="z-stat-value">never</div>
+					<div class="z-stat-hint">no sync has run yet</div>
+				}
+			</div>
+			<div class="z-card">
+				<div class="z-stat-label">Next sync</div>
+				<div class="z-stat-value">{ p.Page.Status.NextRun }</div>
+				<div class="z-stat-hint">folder “{ p.Page.Status.Folder }”</div>
+			</div>
+		</div>
+		<div class="z-card">
+			<h2>Recently updated</h2>
+			@DocumentTable(p.Recent)
+		</div>
+		<div class="z-card">
+			<h2>Latest activity</h2>
+			@Events(p.Events, true)
+		</div>
+	}
+}
+
+templ DocumentTable(rows []DocumentRow) {
+	if len(rows) == 0 {
+		<p class="z-muted">No documents yet. Tag a paper in Zotero and run a sync.</p>
+	} else {
+		<table class="z-table">
+			<thead>
+				<tr><th>Title</th><th>State</th><th>Annotations</th><th>Updated</th></tr>
+			</thead>
+			<tbody>
+				for _, row := range rows {
+					<tr data-document={ i64(row.ID) }>
+						<td>
+							<a href={ templ.SafeURL("/documents/" + i64(row.ID)) }>{ row.Title }</a>
+							<div class="z-muted">{ row.Filename }</div>
+						</td>
+						<td>@Badge(row.State)</td>
+						<td>{ itoa(row.AnnotationCount) }</td>
+						<td class="z-muted">{ Ago(row.UpdatedAt.Time) }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}
+
+templ Documents(p DocumentsProps) {
+	@Layout(p.Page) {
+		<div class="z-card">
+			<div class="mail-filter-tabs" style="margin-bottom: 0.8rem">
+				@filterTab("all", "All", p.Filter)
+				@filterTab("synced", "On reMarkable", p.Filter)
+				@filterTab("annotated", "Annotated", p.Filter)
+				@filterTab("error", "Errors", p.Filter)
+				@filterTab("removed", "Removed", p.Filter)
+			</div>
+			@DocumentTable(p.Documents)
+		</div>
+	}
+}
+
+templ filterTab(value, label, active string) {
+	<a class={ "mail-filter-tab", templ.KV("active", value == active) } href={ templ.SafeURL("/documents?state=" + value) }>{ label }</a>
+}
+
+templ Document(p DocumentProps) {
+	@Layout(p.Page) {
+		<div class="z-card">
+			<h2>{ p.Document.Title }</h2>
+			<dl class="z-kv">
+				<dt>State</dt>
+				<dd>@Badge(p.Document.State)</dd>
+				<dt>File</dt>
+				<dd>{ p.Document.Filename }</dd>
+				<dt>Zotero item</dt>
+				<dd>
+					if p.Document.ZoteroURL != "" {
+						<a href={ templ.SafeURL(p.Document.ZoteroURL) }>{ zoteroItemKey(p.Document) }</a>
+					} else {
+						{ zoteroItemKey(p.Document) }
+					}
+					<span class="z-muted">(attachment { p.Document.ZoteroKey })</span>
+				</dd>
+				<dt>reMarkable</dt>
+				<dd class="z-mono">{ p.Document.RemarkableID }</dd>
+				<dt>Sent</dt>
+				<dd>{ When(tsPtr(p.Document.LastPushedAt)) }</dd>
+				<dt>Annotations pulled</dt>
+				<dd>{ itoa(p.Document.AnnotationCount) } (last { When(tsPtr(p.Document.LastPulledAt)) })</dd>
+				if p.Document.AnnotatedKey != "" {
+					<dt>Annotated PDF</dt>
+					<dd>
+						if p.Document.AnnotatedURL != "" {
+							<a href={ templ.SafeURL(p.Document.AnnotatedURL) }>{ p.Document.AnnotatedKey }</a>
+						} else {
+							{ p.Document.AnnotatedKey }
+						}
+					</dd>
+				}
+				if p.Document.LastError != "" {
+					<dt>Last error</dt>
+					<dd><div class="z-error">{ p.Document.LastError }</div></dd>
+				}
+			</dl>
+		</div>
+		<div class="z-card">
+			<h2>History</h2>
+			@Events(p.Events, false)
+		</div>
+	}
+}
+
+templ Runs(p RunsProps) {
+	@Layout(p.Page) {
+		<div class="z-card">
+			if len(p.Runs) == 0 {
+				<p class="z-muted">No sync has run yet.</p>
+			} else {
+				<table class="z-table">
+					<thead>
+						<tr><th>Started</th><th>Trigger</th><th>Result</th><th>Summary</th><th>Duration</th></tr>
+					</thead>
+					<tbody>
+						for _, run := range p.Runs {
+							<tr>
+								<td><a href={ templ.SafeURL("/runs/" + i64(run.ID)) }>{ WhenTS(run) }</a></td>
+								<td class="z-muted">{ run.Trigger }</td>
+								<td>@RunBadge(run)</td>
+								<td>
+									{ RunSummary(run) }
+									if run.Error != "" {
+										<div class="z-muted">{ run.Error }</div>
+									}
+								</td>
+								<td class="z-muted">{ runDuration(run) }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			}
+		</div>
+	}
+}
+
+templ Run(p RunProps) {
+	@Layout(p.Page) {
+		<div class="z-card">
+			<h2>Sync { WhenTS(p.Run) } @RunBadge(p.Run)</h2>
+			<dl class="z-kv">
+				<dt>Trigger</dt>
+				<dd>{ p.Run.Trigger }</dd>
+				<dt>Summary</dt>
+				<dd>{ RunSummary(p.Run) }</dd>
+				<dt>Duration</dt>
+				<dd>{ runDuration(p.Run) }</dd>
+				if p.Run.Error != "" {
+					<dt>Error</dt>
+					<dd><div class="z-error">{ p.Run.Error }</div></dd>
+				}
+			</dl>
+		</div>
+		<div class="z-card">
+			<h2>Log</h2>
+			@Events(p.Events, true)
+		</div>
+	}
+}
+
+templ SettingsPage(p SettingsProps) {
+	@Layout(p.Page) {
+		if p.Error != "" {
+			<div class="z-error" role="alert">{ p.Error }</div>
+		}
+		if p.Flash != "" {
+			<div class="z-flash" role="status">{ p.Flash }</div>
+		}
+		<div class="z-card" id="zotero">
+			<h2>Zotero</h2>
+			<form class="z-form" method="post" action="/settings/zotero">
+				<label>
+					<span>API key</span>
+					<input type="password" name="zotero_api_key" value={ p.Settings.ZoteroAPIKey } autocomplete="off" required/>
+				</label>
+				<p class="z-hint">
+					Create a private key at <a href="https://www.zotero.org/settings/keys/new" target="_blank" rel="noopener">zotero.org/settings/keys</a>
+					with “Allow library access”, “Allow write access” and “Allow notes access”. Group libraries also need write access for the group.
+				</p>
+				<label>
+					<span>Library</span>
+					<select name="zotero_library_type">
+						<option value="user" selected?={ p.Settings.ZoteroLibraryType != "group" }>My library</option>
+						<option value="group" selected?={ p.Settings.ZoteroLibraryType == "group" }>Group library</option>
+					</select>
+				</label>
+				<label>
+					<span>Group ID (only for group libraries)</span>
+					<input type="text" name="zotero_group_id" value={ groupID(p.Settings) } inputmode="numeric"/>
+				</label>
+				if p.Settings.ZoteroConfigured() {
+					<p class="z-hint">Connected as { p.Settings.ZoteroUsername } (library { i64(p.Settings.ZoteroLibraryID) }).</p>
+				}
+				<button class="z-btn" type="submit">Save and verify</button>
+			</form>
+		</div>
+		<div class="z-card" id="remarkable">
+			<h2>reMarkable</h2>
+			if p.Settings.RemarkableConfigured() {
+				<p class="z-hint">The reMarkable cloud is paired.</p>
+				<form class="z-form" method="post" action="/settings/remarkable/unpair">
+					<button class="z-btn z-btn-danger" type="submit">Unpair</button>
+				</form>
+			} else {
+				<form class="z-form" method="post" action="/settings/remarkable/pair">
+					<p class="z-hint">
+						Open <a href={ templ.SafeURL(p.PairingURL) } target="_blank" rel="noopener">{ p.PairingURL }</a>,
+						sign in and enter the one-time code shown there.
+					</p>
+					<label>
+						<span>One-time code</span>
+						<input type="text" name="code" autocomplete="off" required minlength="8" maxlength="8" placeholder="abcdefgh"/>
+					</label>
+					<button class="z-btn" type="submit">Pair</button>
+				</form>
+			}
+		</div>
+		<div class="z-card" id="sync">
+			<h2>Sync options</h2>
+			<form class="z-form" method="post" action="/settings">
+				<label>
+					<span>Zotero tag that sends a paper to the reMarkable</span>
+					<input type="text" name="tag_send" value={ p.Settings.TagSend } required/>
+				</label>
+				<label>
+					<span>Prefix for state tags (synced, annotated, removed, error)</span>
+					<input type="text" name="tag_prefix" value={ p.Settings.TagPrefix }/>
+				</label>
+				<label>
+					<span>reMarkable folder</span>
+					<input type="text" name="remarkable_folder" value={ p.Settings.RemarkableFolder } required/>
+				</label>
+				<label>
+					<span>reMarkable model (sets the stroke scale)</span>
+					<select name="remarkable_device">
+						for _, d := range p.Devices {
+							<option value={ d.Key } selected?={ d.Key == p.Settings.RemarkableDevice }>{ d.Name }</option>
+						}
+					</select>
+				</label>
+				<label>
+					<span>Sync every N minutes (0 = manual only)</span>
+					<input type="number" name="sync_interval_minutes" min="0" value={ itoa(p.Settings.SyncIntervalMinutes) }/>
+				</label>
+				<label class="z-check">
+					<input type="checkbox" name="write_annotations" value="true" checked?={ p.Settings.WriteAnnotations }/>
+					<span>Create Zotero annotations (ink strokes and highlights) on the original PDF</span>
+				</label>
+				<label class="z-check">
+					<input type="checkbox" name="annotated_pdf" value="true" checked?={ p.Settings.AnnotatedPDF }/>
+					<span>Attach a “(reMarkable)” PDF with the strokes burnt in</span>
+				</label>
+				<label class="z-check">
+					<input type="checkbox" name="trash_when_untagged" value="true" checked?={ p.Settings.TrashWhenUntagged }/>
+					<span>Move the document to the reMarkable trash when the tag is removed in Zotero</span>
+				</label>
+				<label class="z-check">
+					<input type="checkbox" name="untag_when_deleted" value="true" checked?={ p.Settings.UntagWhenDeleted }/>
+					<span>Remove the send tag in Zotero when the document is deleted on the reMarkable</span>
+				</label>
+				<button class="z-btn" type="submit">Save</button>
+			</form>
+		</div>
+	}
+}

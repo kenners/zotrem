@@ -3,8 +3,8 @@ package testkit
 import (
 	"context"
 	"net/http"
-	"os"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 

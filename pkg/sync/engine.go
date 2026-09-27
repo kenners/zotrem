@@ -71,6 +71,14 @@ func (e *Engine) ZoteroClient(s db.Settings) *zotero.Client {
 	return zotero.New(s.ZoteroAPIKey, opts...)
 }
 
+func (e *Engine) Register(ctx context.Context, code string) (string, error) {
+	var opts []remarkable.Option
+	if e.opts.RemarkableAuthHost != "" {
+		opts = append(opts, remarkable.WithAuthHost(e.opts.RemarkableAuthHost))
+	}
+	return remarkable.Register(ctx, code, opts...)
+}
+
 func (e *Engine) RemarkableClient(s db.Settings) *remarkable.Client {
 	opts := []remarkable.Option{
 		remarkable.WithLogger(e.log),
