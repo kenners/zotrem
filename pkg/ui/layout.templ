@@ -1,0 +1,118 @@
+package ui
+
+import (
+	"github.com/kenners/zotrem/pkg/db"
+	"github.com/kenners/zotrem/uikit"
+	lucide "github.com/wux4an/lucide-templ/icons"
+)
+
+templ Head(title string) {
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+		<meta name="color-scheme" content="light"/>
+		<title>{ title } · zotrem</title>
+		<link rel="icon" type="image/svg+xml" href="/static/icon.svg"/>
+		<link rel="apple-touch-icon" href="/static/icon-180.png"/>
+		<link rel="manifest" href="/manifest.webmanifest"/>
+		<meta name="theme-color" content="#0f172a"/>
+		@InlineCSS()
+		<script src="/static/htmx.min.js"></script>
+	</head>
+}
+
+templ Layout(p PageProps) {
+	<!DOCTYPE html>
+	<html lang="en">
+		@Head(p.Title)
+		<body>
+			@uikit.Shell(uikit.ShellProps{
+				Actions:   TopbarActions(p.Status),
+				AppName:   "zotrem",
+				BrandHref: "/",
+				MainClass: "z-main",
+				Nav:       navItems(p.Active, p.Counts),
+			}) {
+				<header class="mail-mainbar">
+					<div class="mail-mainbar-title">
+						<h1>{ p.Title }</h1>
+					</div>
+				</header>
+				<div class="z-body">
+					<div class="z-stack">
+						{ children... }
+					</div>
+				</div>
+			}
+		</body>
+	</html>
+}
+
+templ TopbarActions(s Status) {
+	<div class="z-topbar-status" id="sync-status" hx-get="/status" hx-trigger={ statusTrigger(s) } hx-swap="outerHTML">
+		@SyncStatus(s)
+	</div>
+}
+
+templ SyncStatus(s Status) {
+	if s.Running {
+		<span class="z-badge z-badge-running"><span class="z-spin">@lucide.RefreshCw()</span> Syncing…</span>
+	} else if s.LastRun != nil {
+		<span class="z-muted">Last sync { Ago(s.LastRun.StartedAt.Time) }</span>
+		if s.LastRun.Status == "error" {
+			<span class="z-badge z-badge-error">Failed</span>
+		}
+	}
+	<form class="z-topbar-form" method="post" action="/sync">
+		<button class="z-btn" type="submit" disabled?={ s.Running || !s.Configured } title={ syncTitle(s) }>Sync now</button>
+	</form>
+}
+
+func statusTrigger(s Status) string {
+	if s.Running {
+		return "every 3s"
+	}
+	return "every 30s"
+}
+
+func syncTitle(s Status) string {
+	if !s.Configured {
+		return "Configure Zotero and pair the reMarkable first"
+	}
+	return "Run a sync now"
+}
+
+templ Badge(state string) {
+	<span class={ "z-badge", "z-badge-" + state }>{ StateLabel(state) }</span>
+}
+
+templ RunBadge(run db.SyncRun) {
+	if run.Status == "error" {
+		<span class="z-badge z-badge-error">Failed</span>
+	} else if run.Status == "running" {
+		<span class="z-badge z-badge-running">Running</span>
+	} else {
+		<span class="z-badge z-badge-ok">OK</span>
+	}
+}
+
+templ Events(events []db.SyncEvent, showDocument bool) {
+	if len(events) == 0 {
+		<p class="z-muted">Nothing logged yet.</p>
+	} else {
+		<ul class="z-events">
+			for _, e := range events {
+				<li class={ "z-event", "z-event-" + e.Level }>
+					<time>{ eventTime(e) }</time>
+					<span class="z-muted">{ e.Level }</span>
+					<span>
+						{ e.Message }
+						if showDocument && e.DocumentID != 0 {
+							<a class="z-muted" href={ templ.SafeURL("/documents/" + i64(e.DocumentID)) }>(document)</a>
+						}
+					</span>
+				</li>
+			}
+		</ul>
+	}
+}
