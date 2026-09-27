@@ -23,7 +23,9 @@ with PDFs stored in Zotero Storage without a running Zotero desktop client.
 
 ## Install
 
-Download a release archive from the GitHub releases page and put `zotrem` on your `PATH`, or build from source:
+Every push to `main` builds Linux and macOS binaries (amd64 and arm64) as a "zotrem-binaries" artifact on the
+GitHub Actions run, and tagging `vX.Y.Z` publishes them as a release. Download the archive for your platform and
+put `zotrem` on your `PATH`, or build from source:
 
 ```sh
 go install github.com/kenners/zotrem/cmd/zotrem@latest
