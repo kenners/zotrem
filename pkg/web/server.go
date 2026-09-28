@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -21,10 +20,9 @@ import (
 )
 
 type Server struct {
-	engine   *sync.Engine
-	log      *slog.Logger
-	password string
-	store    *db.DB
+	engine *sync.Engine
+	log    *slog.Logger
+	store  *db.DB
 }
 
 func New(store *db.DB, engine *sync.Engine, log *slog.Logger) *Server {
@@ -33,8 +31,6 @@ func New(store *db.DB, engine *sync.Engine, log *slog.Logger) *Server {
 	}
 	return &Server{engine: engine, log: log, store: store}
 }
-
-func (s *Server) SetPassword(password string) { s.password = password }
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -52,23 +48,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /status", s.handleStatus)
 	mux.HandleFunc("POST /sync", s.handleSync)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", ui.StaticHandler()))
-	var handler http.Handler = mux
-	if s.password != "" {
-		handler = s.basicAuth(handler)
-	}
-	return logging.Middleware(s.log, handler)
-}
-
-func (s *Server) basicAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, pass, ok := r.BasicAuth()
-		if !ok || subtle.ConstantTimeCompare([]byte(pass), []byte(s.password)) != 1 {
-			w.Header().Set("WWW-Authenticate", `Basic realm="zotrem"`)
-			http.Error(w, "authentication required", http.StatusUnauthorized)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+	return logging.Middleware(s.log, mux)
 }
 
 func (s *Server) Status() (ui.Status, error) {

@@ -66,6 +66,13 @@ All state tags share a configurable prefix (default `zotrem:`): `synced`, `annot
 
 ## Credentials
 
-The Zotero API key and reMarkable tokens are stored in the SQLite database in the data directory. The web UI has no
-authentication of its own; run it on a trusted network or behind a reverse proxy, or set `ZOTREM_PASSWORD` to require
-HTTP basic auth.
+The Zotero API key and reMarkable tokens are stored in the SQLite database in the data directory, and the settings page
+shows the Zotero API key, so access to the web UI is access to the credentials. One middleware wraps every route (web UI,
+REST API and OpenAPI docs) and applies whichever checks are configured, all of which must pass:
+
+- `ZOTREM_TAILSCALE_USERS`: the request must come from loopback with a `Tailscale-User-Login` header naming an allowed
+  login. Tailscale Serve sets that header and strips any copy the client sent. Because anything on the same network could
+  send the header directly, zotrem refuses to start with this setting unless it is bound to a loopback address.
+- `ZOTREM_PASSWORD`: HTTP basic auth with this password.
+
+With neither set, zotrem relies on its default localhost binding.

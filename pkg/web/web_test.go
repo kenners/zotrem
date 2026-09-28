@@ -186,25 +186,3 @@ func TestSyncAndPages(t *testing.T) {
 	resp.Body.Close()
 	a.Equal(http.StatusNotFound, resp.StatusCode)
 }
-
-func TestBasicAuth(t *testing.T) {
-	a := assert.New(t)
-	r := require.New(t)
-	store, err := db.New(":memory:")
-	r.NoError(err)
-	t.Cleanup(func() { store.Close() })
-	engine := sync.New(store, nil, sync.Options{})
-	srv := web.New(store, engine, nil)
-	srv.SetPassword("secret")
-	h := testkit.NewHTML(t, srv.Handler())
-	resp, err := h.Client.Get(h.Server.URL + "/")
-	r.NoError(err)
-	resp.Body.Close()
-	a.Equal(http.StatusUnauthorized, resp.StatusCode)
-	req, _ := http.NewRequest(http.MethodGet, h.Server.URL+"/", nil)
-	req.SetBasicAuth("zotrem", "secret")
-	resp, err = h.Client.Do(req)
-	r.NoError(err)
-	resp.Body.Close()
-	a.Equal(http.StatusOK, resp.StatusCode)
-}
