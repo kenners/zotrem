@@ -51,6 +51,10 @@ Every run (manual "Sync now" or the scheduler, default every 15 minutes):
 
 Failures are recorded per document (`zotrem:error` tag, error text in the UI) and never abort the run.
 
+When a healthcheck ping URL is set, each run POSTs to `<url>/start` before discovery and, after the run is recorded,
+to `<url>` on success or `<url>/fail` when the run failed or logged any error-level event, with a plain-text report
+(summary counts and the error messages, capped at 10 kB). Ping failures are logged as warnings and never affect the run.
+
 ## Geometry
 
 reMarkable v6 scene coordinates are pixels of the source page at a fixed 226 units per inch: x is centred on the

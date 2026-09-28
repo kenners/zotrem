@@ -146,6 +146,15 @@ func RunSummary(run db.SyncRun) string {
 	return fmt.Sprintf("%d sent, %d pulled, %d removed", run.Pushed, run.Pulled, run.Removed)
 }
 
+func runsTrigger(runs []db.SyncRun) string {
+	for _, run := range runs {
+		if run.Status == db.RunStatusRunning {
+			return "every 3s"
+		}
+	}
+	return "every 30s"
+}
+
 func itoa(n int) string { return strconv.Itoa(n) }
 
 func i64(n int64) string { return strconv.FormatInt(n, 10) }

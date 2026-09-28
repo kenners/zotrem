@@ -166,37 +166,57 @@ templ Document(p DocumentProps) {
 templ Runs(p RunsProps) {
 	@Layout(p.Page) {
 		<div class="z-card">
-			if len(p.Runs) == 0 {
-				<p class="z-muted">No sync has run yet.</p>
-			} else {
-				<table class="z-table">
-					<thead>
-						<tr><th>Started</th><th>Trigger</th><th>Result</th><th>Summary</th><th>Duration</th></tr>
-					</thead>
-					<tbody>
-						for _, run := range p.Runs {
-							<tr>
-								<td><a href={ templ.SafeURL("/runs/" + i64(run.ID)) }>{ WhenTS(run) }</a></td>
-								<td class="z-muted">{ run.Trigger }</td>
-								<td>@RunBadge(run)</td>
-								<td>
-									{ RunSummary(run) }
-									if run.Error != "" {
-										<div class="z-muted">{ run.Error }</div>
-									}
-								</td>
-								<td class="z-muted">{ runDuration(run) }</td>
-							</tr>
-						}
-					</tbody>
-				</table>
-			}
+			@RunsTable(p.Runs)
 		</div>
 	}
 }
 
+templ RunsTable(runs []db.SyncRun) {
+	<div id="runs-table" hx-get="/runs/table" hx-trigger={ runsTrigger(runs) } hx-swap="outerHTML">
+		if len(runs) == 0 {
+			<p class="z-muted">No sync has run yet.</p>
+		} else {
+			<table class="z-table">
+				<thead>
+					<tr><th>Started</th><th>Trigger</th><th>Result</th><th>Summary</th><th>Duration</th></tr>
+				</thead>
+				<tbody>
+					for _, run := range runs {
+						<tr>
+							<td><a href={ templ.SafeURL("/runs/" + i64(run.ID)) }>{ WhenTS(run) }</a></td>
+							<td class="z-muted">{ run.Trigger }</td>
+							<td>@RunBadge(run)</td>
+							<td>
+								{ RunSummary(run) }
+								if run.Error != "" {
+									<div class="z-muted">{ run.Error }</div>
+								}
+							</td>
+							<td class="z-muted">{ runDuration(run) }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		}
+	</div>
+}
+
 templ Run(p RunProps) {
 	@Layout(p.Page) {
+		@RunDetail(p)
+	}
+}
+
+templ RunDetail(p RunProps) {
+	<div
+		id="run-detail"
+		class="z-stack"
+		if p.Run.Status == db.RunStatusRunning {
+			hx-get={ "/runs/" + i64(p.Run.ID) + "/detail" }
+			hx-trigger="every 3s"
+			hx-swap="outerHTML"
+		}
+	>
 		<div class="z-card">
 			<h2>Sync { WhenTS(p.Run) } @RunBadge(p.Run)</h2>
 			<dl class="z-kv">
@@ -216,7 +236,7 @@ templ Run(p RunProps) {
 			<h2>Log</h2>
 			@Events(p.Events, true)
 		</div>
-	}
+	</div>
 }
 
 templ SettingsPage(p SettingsProps) {
@@ -275,6 +295,24 @@ templ SettingsPage(p SettingsProps) {
 					<button class="z-btn" type="submit">Pair</button>
 				</form>
 			}
+		</div>
+		<div class="z-card" id="monitoring">
+			<h2>Monitoring</h2>
+			<form class="z-form" method="post" action="/settings/healthcheck">
+				<label>
+					<span>Healthchecks.io ping URL (optional)</span>
+					<input type="url" name="healthcheck_url" value={ p.Settings.HealthcheckURL } placeholder="https://hc-ping.com/your-check-uuid" autocomplete="off"/>
+				</label>
+				<p class="z-hint">
+					Create a check at <a href="https://healthchecks.io" target="_blank" rel="noopener">healthchecks.io</a> (or a self-hosted instance) and paste its ping URL.
+					zotrem signals the start of every sync, then success, or failure when the sync or any document fails, with a short report.
+					Set the check's period to match the sync interval so a stopped zotrem is noticed too.
+				</p>
+				<div class="z-actions">
+					<button class="z-btn" type="submit">Save</button>
+					<button class="z-btn" type="submit" formaction="/settings/healthcheck/test">Send test ping</button>
+				</div>
+			</form>
 		</div>
 		<div class="z-card" id="sync">
 			<h2>Sync options</h2>
