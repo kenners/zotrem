@@ -69,31 +69,9 @@ Environment variables:
 | --- | --- |
 | `ZOTREM_DATA_DIR` | Directory for `zotrem.db` (default: the user config directory, e.g. `~/.config/zotrem`). |
 | `ZOTREM_PASSWORD` | When set, the web UI and API require HTTP basic auth with this password (any user name). |
-| `ZOTREM_TAILSCALE_USERS` | Comma-separated Tailscale logins allowed to use the web UI and API through `tailscale serve`. |
 
 The web UI has no login of its own; bind it to localhost (the default) or a private network, or set `ZOTREM_PASSWORD`.
-When both variables are set, a request needs an allowed Tailscale login and the password.
 The Zotero API key and reMarkable tokens are stored unencrypted in the database, so protect the data directory.
-
-## Access over Tailscale
-
-To reach zotrem only from your tailnet, keep it on localhost and let [Tailscale Serve](https://tailscale.com/kb/1312/serve)
-publish it with HTTPS at the machine's tailnet name:
-
-```sh
-ZOTREM_TAILSCALE_USERS=you@example.com zotrem serve
-tailscale serve --bg localhost:8000
-tailscale serve status   # shows the https://<machine>.<tailnet>.ts.net URL
-tailscale serve reset    # stop publishing
-```
-
-Serve tells zotrem who is connecting in the `Tailscale-User-Login` header, and zotrem only admits the logins listed in
-`ZOTREM_TAILSCALE_USERS`. zotrem refuses to start with that variable unless it is bound to localhost, because anyone who
-could reach it directly could forge the header. Opening `http://localhost:8000` on the same machine is refused too: use the
-tailnet URL. Tailscale leaves the header off for tagged devices, so those cannot sign in. Do not enable Funnel for zotrem.
-
-In Docker the default command binds to all interfaces, which this check refuses. Run Tailscale in a sidecar container that
-shares zotrem's network namespace and start zotrem with `serve --bind 127.0.0.1`.
 
 ## How a sync works
 
