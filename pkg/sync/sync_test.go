@@ -305,4 +305,18 @@ func TestLinkedFilesAreErrors(t *testing.T) {
 	}
 	a.Equal(1, levels[db.LevelError])
 	a.Equal(1, levels[db.LevelWarn])
+
+	f.zot.Delete(att.Key)
+	converted := f.zot.AddPDF(linked.Key, "linked.pdf", f.pdf)
+	run = f.run(t)
+	a.Equal(1, run.Pushed)
+	a.Len(f.folderChildren(t), 2)
+	a.Equal([]string{"send-to-remarkable", "zotrem:synced"}, f.zot.Tags(linked.Key))
+	doc, err = f.store.DocumentByZoteroKey(att.Key)
+	r.NoError(err)
+	a.Equal(db.StateRemoved, doc.State)
+	a.Empty(doc.LastError)
+	doc, err = f.store.DocumentByZoteroKey(converted.Key)
+	r.NoError(err)
+	a.Equal(db.StateSynced, doc.State)
 }

@@ -139,6 +139,14 @@ func (s *Server) AddLinkedPDF(parentKey, path string) *Item {
 	})
 }
 
+func (s *Server) Delete(key string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.Items, key)
+	delete(s.Files, key)
+	s.LibraryVersion++
+}
+
 func (s *Server) Item(key string) *Item {
 	s.mu.Lock()
 	defer s.mu.Unlock()

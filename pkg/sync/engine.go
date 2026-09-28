@@ -727,8 +727,10 @@ func (r *run) uploadAnnotatedPDF(doc *db.Document, result *pulled) error {
 }
 
 func (r *run) untag(candidates []candidate) error {
+	holders := map[string]bool{}
 	tagged := map[string]bool{}
 	for _, c := range candidates {
+		holders[c.Holder.Key] = true
 		tagged[c.Attachment.Key] = true
 	}
 	docs, err := r.engine.store.ListDocuments()
@@ -745,6 +747,11 @@ func (r *run) untag(candidates []candidate) error {
 			continue
 		}
 		if err == nil && holder.Data.HasTag(r.settings.TagSend) && holder.Data.Deleted == 0 {
+			if doc.State == db.StateError && doc.RemarkableID == "" {
+				if err := r.dropUnsent(doc, holder, holders[holder.Key]); err != nil {
+					return err
+				}
+			}
 			continue
 		}
 		if r.settings.TrashWhenUntagged && doc.RemarkableID != "" {
@@ -766,5 +773,18 @@ func (r *run) untag(candidates []candidate) error {
 		r.record.Removed++
 		r.event(doc.ID, db.LevelInfo, fmt.Sprintf("%q is no longer tagged; moved to the remarkable trash", doc.Title))
 	}
+	return nil
+}
+
+func (r *run) dropUnsent(doc db.Document, holder zotero.Item, hasOtherPDF bool) error {
+	if !hasOtherPDF {
+		r.setTags(doc, holder, nil, []string{db.StateError})
+	}
+	doc.LastError = ""
+	doc.State = db.StateRemoved
+	if _, err := r.engine.store.UpdateDocument(doc); err != nil {
+		return err
+	}
+	r.event(doc.ID, db.LevelInfo, fmt.Sprintf("the failed attachment of %q is gone; cleared its error", doc.Title))
 	return nil
 }
