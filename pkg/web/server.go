@@ -309,7 +309,6 @@ func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 		settings.SyncIntervalMinutes = interval
 	}
 	settings.AnnotatedPDF = r.FormValue("annotated_pdf") == "true"
-	settings.LinkedFilesDir = form("linked_files_dir")
 	settings.TrashWhenUntagged = r.FormValue("trash_when_untagged") == "true"
 	settings.UntagWhenDeleted = r.FormValue("untag_when_deleted") == "true"
 	settings.WriteAnnotations = r.FormValue("write_annotations") == "true"

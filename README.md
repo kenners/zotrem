@@ -16,9 +16,9 @@ with PDFs stored in Zotero Storage without a running Zotero desktop client.
 
 ## Requirements
 
-- A Zotero account and an API key with library, write and notes access. PDFs stored in Zotero Storage work from
-  anywhere; PDFs kept as *linked files* (ZotFile, ZotMoveFile, a "Linked Attachment Base Directory") work when zotrem
-  runs on a machine that can see that folder and the folder is set in Settings. WebDAV storage is not supported.
+- A Zotero account with the PDFs stored in Zotero Storage (WebDAV storage is not supported) and a Zotero API key with
+  library, write and notes access. PDFs kept as *linked files* (for example by ZotFile or ZotMoveFile) are not
+  synced; a tagged paper with a linked PDF is marked as an error.
 - A reMarkable tablet on firmware 3.x connected to the reMarkable cloud (a Connect subscription is not required).
 - Somewhere to run zotrem: a laptop, a home server or a NAS. It keeps its state in a SQLite database.
 

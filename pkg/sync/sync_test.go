@@ -274,53 +274,35 @@ func TestOptionsCanDisableWrites(t *testing.T) {
 	a.True(zotero.ItemData{Tags: []zotero.Tag{{Tag: "zotrem:annotated"}}}.HasTag("ZOTREM:ANNOTATED"))
 }
 
-func TestLinkedFiles(t *testing.T) {
+func TestLinkedFilesAreErrors(t *testing.T) {
 	a := assert.New(t)
 	r := require.New(t)
 	f := newFixture(t)
-	dir := t.TempDir()
-	r.NoError(os.MkdirAll(filepath.Join(dir, "sub"), 0o755))
-	r.NoError(os.WriteFile(filepath.Join(dir, "sub", "linked.pdf"), f.pdf, 0o644))
-	paper := f.zot.AddPaper("Linked paper", "send-to-remarkable")
-	att := f.zot.AddLinkedPDF(paper.Key, "attachments:sub/linked.pdf")
-	absPaper := f.zot.AddPaper("Absolute paper", "send-to-remarkable")
-	f.zot.AddLinkedPDF(absPaper.Key, "/Users/someone/Documents/Zotmove/absolute.pdf")
-	r.NoError(os.WriteFile(filepath.Join(dir, "absolute.pdf"), f.pdf, 0o644))
+	linked := f.zot.AddPaper("Linked paper", "send-to-remarkable")
+	att := f.zot.AddLinkedPDF(linked.Key, "attachments:sub/linked.pdf")
 	noPDF := f.zot.AddPaper("No attachment", "send-to-remarkable")
+	stored := f.zot.AddPaper("Stored paper", "send-to-remarkable")
+	f.zot.AddPDF(stored.Key, "stored.pdf", f.pdf)
 
 	run := f.run(t)
-	a.Equal(0, run.Pushed)
-	events, err := f.store.ListSyncEvents(run.ID)
-	r.NoError(err)
-	warnings := 0
-	for _, e := range events {
-		if e.Level == db.LevelWarn {
-			warnings++
-		}
-	}
-	a.Equal(3, warnings)
-	_, err = f.store.DocumentByZoteroKey(att.Key)
-	a.True(db.IsDocumentNotFound(err))
+	a.Equal(1, run.Pushed)
+	a.Len(f.folderChildren(t), 1)
 
-	settings, err := f.store.Settings()
-	r.NoError(err)
-	settings.LinkedFilesDir = dir
-	r.NoError(f.store.SaveSettings(settings))
-	run = f.run(t)
-	a.Equal(2, run.Pushed)
 	doc, err := f.store.DocumentByZoteroKey(att.Key)
 	r.NoError(err)
+	a.Equal(db.StateError, doc.State)
+	a.Contains(doc.LastError, "linked file")
 	a.Equal("linked.pdf", doc.Filename)
-	a.Equal(zotero.MD5Hex(f.pdf), doc.ZoteroMD5)
-	a.Len(f.folderChildren(t), 2)
-	a.Equal([]string{"send-to-remarkable", "zotrem:synced"}, f.zot.Tags(paper.Key))
+	a.Equal([]string{"send-to-remarkable", "zotrem:error"}, f.zot.Tags(linked.Key))
 	a.Equal([]string{"send-to-remarkable"}, f.zot.Tags(noPDF.Key))
+	a.Equal([]string{"send-to-remarkable", "zotrem:synced"}, f.zot.Tags(stored.Key))
 
-	f.rm.SetPageStrokes(doc.RemarkableID, 0, loadRM(t, "rm2pdf_version6.rm"))
-	run = f.run(t)
-	a.Equal(1, run.Pulled)
-	a.Len(f.zot.ChildrenOf(att.Key), 26)
-	doc, err = f.store.DocumentByZoteroKey(att.Key)
+	events, err := f.store.ListSyncEvents(run.ID)
 	r.NoError(err)
-	a.Equal("linked (reMarkable).pdf", f.zot.Item(doc.AnnotatedKey).Data["filename"])
+	levels := map[string]int{}
+	for _, e := range events {
+		levels[e.Level]++
+	}
+	a.Equal(1, levels[db.LevelError])
+	a.Equal(1, levels[db.LevelWarn])
 }

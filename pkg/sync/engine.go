@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -245,27 +244,21 @@ func (r *run) discover() ([]candidate, error) {
 				continue
 			}
 			seen[item.Key] = true
-			if r.usable(item, item) {
-				out = append(out, candidate{Attachment: item, Holder: item})
-			}
+			out = append(out, candidate{Attachment: item, Holder: item})
 		case item.Data.IsRegularItem():
 			children, err := r.zc.Children(r.ctx, item.Key)
 			if err != nil {
 				r.event(0, db.LevelWarn, fmt.Sprintf("cannot list attachments of %q: %v", item.Title(), err))
 				continue
 			}
-			found := false
 			for _, child := range children {
 				if !child.Data.IsPDF() || seen[child.Key] || isAnnotatedCopy(child) {
 					continue
 				}
 				seen[child.Key] = true
-				if r.usable(child, item) {
-					found = true
-					out = append(out, candidate{Attachment: child, Holder: item})
-				}
+				out = append(out, candidate{Attachment: child, Holder: item})
 			}
-			if !found && !hasPDF(children) {
+			if !hasPDF(children) {
 				r.event(0, db.LevelWarn, fmt.Sprintf("%q is tagged but has no PDF attachment", item.Title()))
 			}
 		}
@@ -290,35 +283,9 @@ func hasPDF(items []zotero.Item) bool {
 	return false
 }
 
-func (r *run) usable(attachment, holder zotero.Item) bool {
-	if attachment.Data.IsStoredPDF() {
-		return true
-	}
-	if r.settings.LinkedFilesDir == "" {
-		r.event(0, db.LevelWarn, fmt.Sprintf("%q is tagged but its PDF is a linked file (%s), which the Zotero API cannot download; store the file in Zotero or set the linked files directory in Settings", holder.Title(), attachment.Data.Path))
-		return false
-	}
-	return true
-}
-
-func linkedFilePath(dir, path string) string {
-	if rel, ok := strings.CutPrefix(path, zotero.LinkedAttachmentPrefix); ok {
-		return filepath.Join(dir, filepath.FromSlash(rel))
-	}
-	if _, err := os.Stat(path); err == nil {
-		return path
-	}
-	return filepath.Join(dir, filepath.Base(path))
-}
-
 func (r *run) readPDF(attachment zotero.Item) ([]byte, string, error) {
 	if attachment.Data.IsLinkedPDF() {
-		path := linkedFilePath(r.settings.LinkedFilesDir, attachment.Data.Path)
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return nil, "", errors.Wrapf(err, "read linked pdf %s", path)
-		}
-		return data, zotero.MD5Hex(data), nil
+		return nil, "", errors.Newf("the PDF is a linked file (%s), which zotrem does not support; store the file in Zotero instead", attachment.Data.Path)
 	}
 	data, info, err := r.zc.DownloadFile(r.ctx, attachment.Key)
 	if err != nil {
@@ -686,10 +653,6 @@ func (r *run) syncAnnotations(doc db.Document, annotations []render.Annotation) 
 
 const annotatedSuffix = " (reMarkable).pdf"
 
-func filenameOf(doc db.Document) string {
-	return filepath.Base(doc.Filename)
-}
-
 func annotatedFilename(filename, title string) string {
 	base := strings.TrimSuffix(filename, ".pdf")
 	if base == "" {
@@ -710,7 +673,7 @@ func (r *run) uploadAnnotatedPDF(doc *db.Document, result *pulled) error {
 	if doc.AnnotatedKey != "" && doc.AnnotatedMD5 == md5 {
 		return nil
 	}
-	filename := annotatedFilename(filenameOf(*doc), doc.Title)
+	filename := annotatedFilename(doc.Filename, doc.Title)
 	if doc.AnnotatedKey != "" {
 		if _, err := r.zc.Item(r.ctx, doc.AnnotatedKey); zotero.IsNotFound(err) {
 			doc.AnnotatedKey = ""

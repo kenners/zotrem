@@ -11,7 +11,6 @@ import (
 
 const (
 	KeyAnnotatedPDF          = "annotated_pdf"
-	KeyLinkedFilesDir        = "linked_files_dir"
 	KeyRemarkableDeviceToken = "remarkable_device_token"
 	KeyRemarkableFolder      = "remarkable_folder"
 	KeyRemarkableUserToken   = "remarkable_user_token"
@@ -29,7 +28,6 @@ const (
 
 type Settings struct {
 	AnnotatedPDF          bool
-	LinkedFilesDir        string
 	RemarkableDeviceToken string
 	RemarkableFolder      string
 	RemarkableUserToken   string
@@ -70,7 +68,6 @@ func (s Settings) StateTag(state string) string { return s.TagPrefix + state }
 func (s Settings) values() map[string]string {
 	return map[string]string{
 		KeyAnnotatedPDF:          strconv.FormatBool(s.AnnotatedPDF),
-		KeyLinkedFilesDir:        s.LinkedFilesDir,
 		KeyRemarkableDeviceToken: s.RemarkableDeviceToken,
 		KeyRemarkableFolder:      s.RemarkableFolder,
 		KeyRemarkableUserToken:   s.RemarkableUserToken,
@@ -93,8 +90,6 @@ func settingsFromRows(rows []sqlite.Setting) Settings {
 		switch row.Key {
 		case KeyAnnotatedPDF:
 			s.AnnotatedPDF = row.Value == "true"
-		case KeyLinkedFilesDir:
-			s.LinkedFilesDir = row.Value
 		case KeyRemarkableDeviceToken:
 			s.RemarkableDeviceToken = row.Value
 		case KeyRemarkableFolder:

@@ -292,15 +292,6 @@ templ SettingsPage(p SettingsProps) {
 					<input type="text" name="remarkable_folder" value={ p.Settings.RemarkableFolder } required/>
 				</label>
 				<label>
-					<span>Linked files directory (optional)</span>
-					<input type="text" name="linked_files_dir" value={ p.Settings.LinkedFilesDir } placeholder="/Users/you/Documents/Zotero attachments"/>
-				</label>
-				<p class="z-hint">
-					PDFs that Zotero stores as <em>linked files</em> (for example via ZotFile or ZotMoveFile) are not available through the Zotero API.
-					If zotrem runs on a machine that can see that folder, enter it here and linked PDFs are read from disk; Zotero's
-					“Linked Attachment Base Directory” setting should point at the same folder.
-				</p>
-				<label>
 					<span>Sync every N minutes (0 = manual only)</span>
 					<input type="number" name="sync_interval_minutes" min="0" value={ itoa(p.Settings.SyncIntervalMinutes) }/>
 				</label>
