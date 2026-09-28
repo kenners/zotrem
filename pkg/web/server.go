@@ -2,10 +2,10 @@ package web
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +13,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/cockroachdb/errors"
 	"github.com/kenners/zotrem/pkg/db"
+	"github.com/kenners/zotrem/pkg/healthcheck"
 	"github.com/kenners/zotrem/pkg/remarkable"
 	"github.com/kenners/zotrem/pkg/server/httperr"
 	"github.com/kenners/zotrem/pkg/server/logging"
@@ -21,10 +22,9 @@ import (
 )
 
 type Server struct {
-	engine   *sync.Engine
-	log      *slog.Logger
-	password string
-	store    *db.DB
+	engine *sync.Engine
+	log    *slog.Logger
+	store  *db.DB
 }
 
 func New(store *db.DB, engine *sync.Engine, log *slog.Logger) *Server {
@@ -34,8 +34,6 @@ func New(store *db.DB, engine *sync.Engine, log *slog.Logger) *Server {
 	return &Server{engine: engine, log: log, store: store}
 }
 
-func (s *Server) SetPassword(password string) { s.password = password }
-
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.handleDashboard)
@@ -43,32 +41,20 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /documents/{id}", s.handleDocument)
 	mux.HandleFunc("GET /manifest.webmanifest", s.handleManifest)
 	mux.HandleFunc("GET /runs", s.handleRuns)
+	mux.HandleFunc("GET /runs/table", s.handleRunsTable)
 	mux.HandleFunc("GET /runs/{id}", s.handleRun)
+	mux.HandleFunc("GET /runs/{id}/detail", s.handleRunDetail)
 	mux.HandleFunc("GET /settings", s.handleSettings)
 	mux.HandleFunc("POST /settings", s.handleSaveSettings)
+	mux.HandleFunc("POST /settings/healthcheck", s.handleSaveHealthcheck)
+	mux.HandleFunc("POST /settings/healthcheck/test", s.handleTestHealthcheck)
 	mux.HandleFunc("POST /settings/remarkable/pair", s.handlePair)
 	mux.HandleFunc("POST /settings/remarkable/unpair", s.handleUnpair)
 	mux.HandleFunc("POST /settings/zotero", s.handleSaveZotero)
 	mux.HandleFunc("GET /status", s.handleStatus)
 	mux.HandleFunc("POST /sync", s.handleSync)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", ui.StaticHandler()))
-	var handler http.Handler = mux
-	if s.password != "" {
-		handler = s.basicAuth(handler)
-	}
-	return logging.Middleware(s.log, handler)
-}
-
-func (s *Server) basicAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, pass, ok := r.BasicAuth()
-		if !ok || subtle.ConstantTimeCompare([]byte(pass), []byte(s.password)) != 1 {
-			w.Header().Set("WWW-Authenticate", `Basic realm="zotrem"`)
-			http.Error(w, "authentication required", http.StatusUnauthorized)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+	return logging.Middleware(s.log, mux)
 }
 
 func (s *Server) Status() (ui.Status, error) {
@@ -234,32 +220,58 @@ func (s *Server) handleRuns(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, ui.Runs(ui.RunsProps{Page: page, Runs: runs}))
 }
 
-func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleRunsTable(w http.ResponseWriter, r *http.Request) {
+	runs, err := s.store.ListSyncRuns(100)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	s.render(w, r, ui.RunsTable(runs))
+}
+
+func (s *Server) runProps(w http.ResponseWriter, r *http.Request) (ui.RunProps, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
+		return ui.RunProps{}, false
 	}
 	run, err := s.store.SyncRun(id)
 	if errors.Is(err, db.ErrRunNotFound) {
 		http.Error(w, "not found", http.StatusNotFound)
-		return
+		return ui.RunProps{}, false
 	}
 	if err != nil {
 		s.fail(w, err)
-		return
-	}
-	page, err := s.page("runs", "Sync "+ui.WhenTS(run))
-	if err != nil {
-		s.fail(w, err)
-		return
+		return ui.RunProps{}, false
 	}
 	events, err := s.store.ListSyncEvents(id)
 	if err != nil {
 		s.fail(w, err)
+		return ui.RunProps{}, false
+	}
+	return ui.RunProps{Events: events, Run: run}, true
+}
+
+func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
+	props, ok := s.runProps(w, r)
+	if !ok {
 		return
 	}
-	s.render(w, r, ui.Run(ui.RunProps{Events: events, Page: page, Run: run}))
+	page, err := s.page("runs", "Sync "+ui.WhenTS(props.Run))
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	props.Page = page
+	s.render(w, r, ui.Run(props))
+}
+
+func (s *Server) handleRunDetail(w http.ResponseWriter, r *http.Request) {
+	props, ok := s.runProps(w, r)
+	if !ok {
+		return
+	}
+	s.render(w, r, ui.RunDetail(props))
 }
 
 func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request, flash, errMsg string) {
@@ -317,6 +329,51 @@ func (s *Server) handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/settings?flash=Settings+saved", http.StatusSeeOther)
+}
+
+func (s *Server) handleSaveHealthcheck(w http.ResponseWriter, r *http.Request) {
+	target, ok := s.saveHealthcheck(w, r)
+	if !ok {
+		return
+	}
+	flash := "Healthcheck+ping+URL+saved"
+	if target == "" {
+		flash = "Healthcheck+pings+turned+off"
+	}
+	http.Redirect(w, r, "/settings?flash="+flash+"#monitoring", http.StatusSeeOther)
+}
+
+func (s *Server) handleTestHealthcheck(w http.ResponseWriter, r *http.Request) {
+	target, ok := s.saveHealthcheck(w, r)
+	if !ok {
+		return
+	}
+	if target == "" {
+		http.Redirect(w, r, "/settings?error="+url.QueryEscape("Enter a healthcheck ping URL first")+"#monitoring", http.StatusSeeOther)
+		return
+	}
+	if err := s.engine.PingHealthcheck(r.Context(), target, healthcheck.Log, "zotrem test ping"); err != nil {
+		http.Redirect(w, r, "/settings?error="+url.QueryEscape("Test ping failed: "+err.Error())+"#monitoring", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/settings?flash="+url.QueryEscape("Saved; test ping sent (it appears as a log entry and does not change the check's status)")+"#monitoring", http.StatusSeeOther)
+}
+
+func (s *Server) saveHealthcheck(w http.ResponseWriter, r *http.Request) (string, bool) {
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, err)
+		return "", false
+	}
+	target, err := healthcheck.Normalize(r.FormValue("healthcheck_url"))
+	if err != nil {
+		http.Redirect(w, r, "/settings?error="+url.QueryEscape(err.Error())+"#monitoring", http.StatusSeeOther)
+		return "", false
+	}
+	if err := s.store.SetSetting(db.KeyHealthcheckURL, target); err != nil {
+		s.fail(w, err)
+		return "", false
+	}
+	return target, true
 }
 
 func (s *Server) handleSaveZotero(w http.ResponseWriter, r *http.Request) {

@@ -89,6 +89,13 @@ Every run (manual, or every 15 minutes by default):
 Per-document failures are recorded (and tagged `zotrem:error`) without stopping the run. See `docs/DESIGN.md` for the
 details, including how reMarkable coordinates are mapped onto PDF pages.
 
+## Monitoring
+
+Paste a [Healthchecks.io](https://healthchecks.io) ping URL (or one from a self-hosted instance) under **Settings →
+Monitoring**. Every sync signals its start, then success, or failure when the sync or any document fails; the failure
+ping carries a short report with the error messages. Set the check's period to the sync interval so that a zotrem that
+has stopped running is noticed too. **Send test ping** posts a log entry, which does not change the check's status.
+
 ## Limitations
 
 - Notebook pages inserted between PDF pages on the tablet are skipped; only annotations on the PDF's own pages are

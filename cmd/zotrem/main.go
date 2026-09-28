@@ -90,19 +90,19 @@ func newRootCmd() *cobra.Command {
 			defer stop()
 			go a.engine.RunScheduler(ctx)
 
+			password := os.Getenv("ZOTREM_PASSWORD")
 			addr := fmt.Sprintf("%s:%d", bind, port)
 			srv := fuego.NewServer(
 				fuego.WithAddr(addr),
+				fuego.WithGlobalMiddlewares(web.BasicAuth(password)),
 				fuego.WithEngineOptions(fuego.WithOpenAPIConfig(fuego.OpenAPIConfig{
 					DisableLocalSave: true,
 					Info:             &openapi3.Info{Title: "zotrem API", Version: version},
 				})),
 			)
 			api.Register(srv, api.Deps{Engine: a.engine, Store: a.store, Version: version})
-			webSrv := web.New(a.store, a.engine, a.log)
-			webSrv.SetPassword(os.Getenv("ZOTREM_PASSWORD"))
-			srv.Mux.Handle("/", webSrv.Handler())
-			a.log.Info("zotrem listening", "addr", addr, "data", dataDir)
+			srv.Mux.Handle("/", web.New(a.store, a.engine, a.log).Handler())
+			a.log.Info("zotrem listening", "addr", addr, "data", dataDir, "password", password != "")
 			go func() {
 				<-ctx.Done()
 				shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

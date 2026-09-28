@@ -14,6 +14,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/kenners/zotrem/pkg/db"
+	"github.com/kenners/zotrem/pkg/healthcheck"
 	"github.com/kenners/zotrem/pkg/remarkable"
 	"github.com/kenners/zotrem/pkg/render"
 	"github.com/kenners/zotrem/pkg/rm"
@@ -31,6 +32,7 @@ type Options struct {
 }
 
 type Engine struct {
+	hc      *healthcheck.Client
 	log     *slog.Logger
 	opts    Options
 	running bool
@@ -43,7 +45,7 @@ func New(store *db.DB, log *slog.Logger, opts Options) *Engine {
 	if log == nil {
 		log = slog.Default()
 	}
-	return &Engine{log: log, opts: opts, store: store}
+	return &Engine{hc: healthcheck.New(nil), log: log, opts: opts, store: store}
 }
 
 func (e *Engine) Running() bool {
@@ -104,6 +106,7 @@ func (e *Engine) RemarkableClient(s db.Settings) *remarkable.Client {
 type run struct {
 	ctx      context.Context
 	engine   *Engine
+	errors   []string
 	folder   remarkable.Item
 	items    map[string]remarkable.Item
 	rc       *remarkable.Client
@@ -125,6 +128,8 @@ func (e *Engine) Run(ctx context.Context, trigger string) (db.SyncRun, error) {
 		return db.SyncRun{}, err
 	}
 	r := &run{ctx: ctx, engine: e, record: record}
+	hcURL := e.healthcheckURL()
+	r.ping(hcURL, healthcheck.Start, "")
 	runErr := r.execute()
 	if runErr != nil {
 		r.record.Status = db.RunStatusError
@@ -136,10 +141,53 @@ func (e *Engine) Run(ctx context.Context, trigger string) (db.SyncRun, error) {
 	if err := e.store.FinishSyncRun(r.record); err != nil {
 		return r.record, err
 	}
+	signal := healthcheck.Success
+	if len(r.errors) > 0 {
+		signal = healthcheck.Fail
+	}
+	r.ping(hcURL, signal, r.report())
 	return r.record, runErr
 }
 
+func (e *Engine) healthcheckURL() string {
+	settings, err := e.store.Settings()
+	if err != nil {
+		return ""
+	}
+	return settings.HealthcheckURL
+}
+
+func (e *Engine) PingHealthcheck(ctx context.Context, base, signal, body string) error {
+	return e.hc.Ping(ctx, base, signal, body)
+}
+
+func (r *run) ping(base, signal, body string) {
+	if base == "" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.ctx), 15*time.Second)
+	defer cancel()
+	if err := r.engine.hc.Ping(ctx, base, signal, body); err != nil {
+		r.event(0, db.LevelWarn, fmt.Sprintf("ping healthchecks.io: %v", err))
+	}
+}
+
+func (r *run) report() string {
+	status := "ok"
+	if len(r.errors) > 0 {
+		status = fmt.Sprintf("%d error(s)", len(r.errors))
+	}
+	lines := []string{
+		fmt.Sprintf("zotrem sync %d (%s): %s", r.record.ID, r.record.Trigger, status),
+		fmt.Sprintf("%d sent, %d pulled, %d removed", r.record.Pushed, r.record.Pulled, r.record.Removed),
+	}
+	return strings.Join(append(lines, r.errors...), "\n") + "\n"
+}
+
 func (r *run) event(documentID int64, level, message string) {
+	if level == db.LevelError {
+		r.errors = append(r.errors, message)
+	}
 	if err := r.engine.store.AddSyncEvent(r.record.ID, documentID, level, message); err != nil {
 		r.engine.log.Warn("record sync event", "error", err)
 	}

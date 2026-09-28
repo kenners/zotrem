@@ -51,6 +51,10 @@ Every run (manual "Sync now" or the scheduler, default every 15 minutes):
 
 Failures are recorded per document (`zotrem:error` tag, error text in the UI) and never abort the run.
 
+When a healthcheck ping URL is set, each run POSTs to `<url>/start` before discovery and, after the run is recorded,
+to `<url>` on success or `<url>/fail` when the run failed or logged any error-level event, with a plain-text report
+(summary counts and the error messages, capped at 10 kB). Ping failures are logged as warnings and never affect the run.
+
 ## Geometry
 
 reMarkable v6 scene coordinates are pixels of the source page at a fixed 226 units per inch: x is centred on the
@@ -66,6 +70,7 @@ All state tags share a configurable prefix (default `zotrem:`): `synced`, `annot
 
 ## Credentials
 
-The Zotero API key and reMarkable tokens are stored in the SQLite database in the data directory. The web UI has no
-authentication of its own; run it on a trusted network or behind a reverse proxy, or set `ZOTREM_PASSWORD` to require
-HTTP basic auth.
+The Zotero API key and reMarkable tokens are stored in the SQLite database in the data directory, and the settings page
+shows the Zotero API key, so access to the web UI is access to the credentials. zotrem binds to localhost by default; to
+reach it from the local network, bind to `0.0.0.0` on a trusted network. Setting `ZOTREM_PASSWORD` adds HTTP basic auth
+through one middleware that wraps every route: the web UI, the REST API and the OpenAPI docs.
