@@ -273,3 +273,50 @@ func TestOptionsCanDisableWrites(t *testing.T) {
 	a.Equal(db.StateAnnotated, doc.State)
 	a.True(zotero.ItemData{Tags: []zotero.Tag{{Tag: "zotrem:annotated"}}}.HasTag("ZOTREM:ANNOTATED"))
 }
+
+func TestLinkedFilesAreErrors(t *testing.T) {
+	a := assert.New(t)
+	r := require.New(t)
+	f := newFixture(t)
+	linked := f.zot.AddPaper("Linked paper", "send-to-remarkable")
+	att := f.zot.AddLinkedPDF(linked.Key, "attachments:sub/linked.pdf")
+	noPDF := f.zot.AddPaper("No attachment", "send-to-remarkable")
+	stored := f.zot.AddPaper("Stored paper", "send-to-remarkable")
+	f.zot.AddPDF(stored.Key, "stored.pdf", f.pdf)
+
+	run := f.run(t)
+	a.Equal(1, run.Pushed)
+	a.Len(f.folderChildren(t), 1)
+
+	doc, err := f.store.DocumentByZoteroKey(att.Key)
+	r.NoError(err)
+	a.Equal(db.StateError, doc.State)
+	a.Contains(doc.LastError, "linked file")
+	a.Equal("linked.pdf", doc.Filename)
+	a.Equal([]string{"send-to-remarkable", "zotrem:error"}, f.zot.Tags(linked.Key))
+	a.Equal([]string{"send-to-remarkable"}, f.zot.Tags(noPDF.Key))
+	a.Equal([]string{"send-to-remarkable", "zotrem:synced"}, f.zot.Tags(stored.Key))
+
+	events, err := f.store.ListSyncEvents(run.ID)
+	r.NoError(err)
+	levels := map[string]int{}
+	for _, e := range events {
+		levels[e.Level]++
+	}
+	a.Equal(1, levels[db.LevelError])
+	a.Equal(1, levels[db.LevelWarn])
+
+	f.zot.Delete(att.Key)
+	converted := f.zot.AddPDF(linked.Key, "linked.pdf", f.pdf)
+	run = f.run(t)
+	a.Equal(1, run.Pushed)
+	a.Len(f.folderChildren(t), 2)
+	a.Equal([]string{"send-to-remarkable", "zotrem:synced"}, f.zot.Tags(linked.Key))
+	doc, err = f.store.DocumentByZoteroKey(att.Key)
+	r.NoError(err)
+	a.Equal(db.StateRemoved, doc.State)
+	a.Empty(doc.LastError)
+	doc, err = f.store.DocumentByZoteroKey(converted.Key)
+	r.NoError(err)
+	a.Equal(db.StateSynced, doc.State)
+}

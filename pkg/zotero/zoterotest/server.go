@@ -128,6 +128,25 @@ func (s *Server) AddPDF(parentKey, filename string, data []byte) *Item {
 	return item
 }
 
+func (s *Server) AddLinkedPDF(parentKey, path string) *Item {
+	return s.AddItem(map[string]any{
+		"contentType": "application/pdf",
+		"itemType":    "attachment",
+		"linkMode":    "linked_file",
+		"parentItem":  parentKey,
+		"path":        path,
+		"title":       path,
+	})
+}
+
+func (s *Server) Delete(key string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.Items, key)
+	delete(s.Files, key)
+	s.LibraryVersion++
+}
+
 func (s *Server) Item(key string) *Item {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -238,11 +239,12 @@ func (r *run) discover() ([]candidate, error) {
 	}
 	for _, item := range tagged {
 		switch {
-		case item.Data.IsStoredPDF():
-			if !seen[item.Key] {
-				seen[item.Key] = true
-				out = append(out, candidate{Attachment: item, Holder: item})
+		case item.Data.IsPDF():
+			if seen[item.Key] {
+				continue
 			}
+			seen[item.Key] = true
+			out = append(out, candidate{Attachment: item, Holder: item})
 		case item.Data.IsRegularItem():
 			children, err := r.zc.Children(r.ctx, item.Key)
 			if err != nil {
@@ -250,15 +252,46 @@ func (r *run) discover() ([]candidate, error) {
 				continue
 			}
 			for _, child := range children {
-				if child.Data.IsStoredPDF() && !seen[child.Key] && !isAnnotatedCopy(child) {
-					seen[child.Key] = true
-					out = append(out, candidate{Attachment: child, Holder: item})
+				if !child.Data.IsPDF() || seen[child.Key] || isAnnotatedCopy(child) {
+					continue
 				}
+				seen[child.Key] = true
+				out = append(out, candidate{Attachment: child, Holder: item})
+			}
+			if !hasPDF(children) {
+				r.event(0, db.LevelWarn, fmt.Sprintf("%q is tagged but has no PDF attachment", item.Title()))
 			}
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Attachment.Key < out[j].Attachment.Key })
 	return out, nil
+}
+
+func attachmentFilename(item zotero.Item) string {
+	if item.Data.Filename != "" {
+		return item.Data.Filename
+	}
+	return filepath.Base(strings.TrimPrefix(item.Data.Path, zotero.LinkedAttachmentPrefix))
+}
+
+func hasPDF(items []zotero.Item) bool {
+	for _, item := range items {
+		if item.Data.IsPDF() && !isAnnotatedCopy(item) {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *run) readPDF(attachment zotero.Item) ([]byte, string, error) {
+	if attachment.Data.IsLinkedPDF() {
+		return nil, "", errors.Newf("the PDF is a linked file (%s), which zotrem does not support; store the file in Zotero instead", attachment.Data.Path)
+	}
+	data, info, err := r.zc.DownloadFile(r.ctx, attachment.Key)
+	if err != nil {
+		return nil, "", errors.Wrap(err, "download pdf from zotero")
+	}
+	return data, info.MD5, nil
 }
 
 func isAnnotatedCopy(item zotero.Item) bool {
@@ -271,7 +304,7 @@ func (r *run) push(candidates []candidate) {
 		switch {
 		case db.IsDocumentNotFound(err):
 			doc, err = r.engine.store.InsertDocument(db.NewDocument{
-				Filename:        c.Attachment.Data.Filename,
+				Filename:        attachmentFilename(c.Attachment),
 				Title:           c.title(),
 				ZoteroKey:       c.Attachment.Key,
 				ZoteroMD5:       c.Attachment.Data.MD5,
@@ -295,9 +328,9 @@ func (r *run) push(candidates []candidate) {
 }
 
 func (r *run) pushDocument(doc db.Document, c candidate) {
-	pdf, info, err := r.zc.DownloadFile(r.ctx, c.Attachment.Key)
+	pdf, md5, err := r.readPDF(c.Attachment)
 	if err != nil {
-		r.fail(doc, c.Holder, errors.Wrap(err, "download pdf from zotero"))
+		r.fail(doc, c.Holder, err)
 		return
 	}
 	entry, err := r.rc.PutPDF(r.ctx, c.title(), pdf, remarkable.PutPDFOptions{Parent: r.folder.ID})
@@ -309,7 +342,7 @@ func (r *run) pushDocument(doc db.Document, c candidate) {
 	doc.AnnotatedKey = ""
 	doc.AnnotatedMD5 = ""
 	doc.AnnotationCount = 0
-	doc.Filename = c.Attachment.Data.Filename
+	doc.Filename = attachmentFilename(c.Attachment)
 	doc.LastError = ""
 	doc.LastPushedAt = ts.NowPtr()
 	doc.RemarkableHash = entry.Hash
@@ -317,7 +350,7 @@ func (r *run) pushDocument(doc db.Document, c candidate) {
 	doc.SceneSignature = ""
 	doc.State = db.StateSynced
 	doc.Title = c.title()
-	doc.ZoteroMD5 = info.MD5
+	doc.ZoteroMD5 = md5
 	doc.ZoteroParentKey = c.Attachment.Data.ParentItem
 	if _, err := r.engine.store.UpdateDocument(doc); err != nil {
 		r.event(doc.ID, db.LevelError, fmt.Sprintf("save mapping for %q: %v", doc.Title, err))
@@ -694,8 +727,10 @@ func (r *run) uploadAnnotatedPDF(doc *db.Document, result *pulled) error {
 }
 
 func (r *run) untag(candidates []candidate) error {
+	holders := map[string]bool{}
 	tagged := map[string]bool{}
 	for _, c := range candidates {
+		holders[c.Holder.Key] = true
 		tagged[c.Attachment.Key] = true
 	}
 	docs, err := r.engine.store.ListDocuments()
@@ -712,6 +747,11 @@ func (r *run) untag(candidates []candidate) error {
 			continue
 		}
 		if err == nil && holder.Data.HasTag(r.settings.TagSend) && holder.Data.Deleted == 0 {
+			if doc.State == db.StateError && doc.RemarkableID == "" {
+				if err := r.dropUnsent(doc, holder, holders[holder.Key]); err != nil {
+					return err
+				}
+			}
 			continue
 		}
 		if r.settings.TrashWhenUntagged && doc.RemarkableID != "" {
@@ -733,5 +773,18 @@ func (r *run) untag(candidates []candidate) error {
 		r.record.Removed++
 		r.event(doc.ID, db.LevelInfo, fmt.Sprintf("%q is no longer tagged; moved to the remarkable trash", doc.Title))
 	}
+	return nil
+}
+
+func (r *run) dropUnsent(doc db.Document, holder zotero.Item, hasOtherPDF bool) error {
+	if !hasOtherPDF {
+		r.setTags(doc, holder, nil, []string{db.StateError})
+	}
+	doc.LastError = ""
+	doc.State = db.StateRemoved
+	if _, err := r.engine.store.UpdateDocument(doc); err != nil {
+		return err
+	}
+	r.event(doc.ID, db.LevelInfo, fmt.Sprintf("the failed attachment of %q is gone; cleared its error", doc.Title))
 	return nil
 }
