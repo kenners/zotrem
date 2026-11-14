@@ -26,17 +26,33 @@ with PDFs stored in Zotero Storage without a running Zotero desktop client.
 
 Every push to `main` builds Linux and macOS binaries (amd64 and arm64) as a "zotrem-binaries" artifact on the
 GitHub Actions run, and tagging `vX.Y.Z` publishes them as a release. Download the archive for your platform and
-put `zotrem` on your `PATH`, or build from source:
+put `zotrem` on your `PATH`.
+
+### From source
+
+Building needs Go 1.26.5 or newer. The templ and sqlc code is generated at build time and not committed, so
+`go install github.com/kenners/zotrem/cmd/zotrem@latest` does not work; build from a clone instead:
 
 ```sh
-go install github.com/kenners/zotrem/cmd/zotrem@latest
+git clone https://github.com/kenners/zotrem
+cd zotrem
+go tool mage build   # generates the code and installs zotrem to ~/go/bin
 ```
 
-Or run the container image:
+### Docker
+
+There is no published image; build one from a clone and run it with a named volume for the data:
 
 ```sh
-docker run -d --name zotrem -p 8000:8000 -v zotrem-data:/data ghcr.io/kenners/zotrem
+git clone https://github.com/kenners/zotrem
+cd zotrem
+docker build -t zotrem .
+docker run -d --name zotrem -p 8000:8000 -v zotrem-data:/data zotrem
 ```
+
+The container runs as an unprivileged user (UID 65532). To keep the data in a host directory instead of a named
+volume, make that directory writable by that user first, for example `sudo chown 65532:65532 /srv/zotrem`, then
+mount it with `-v /srv/zotrem:/data`.
 
 ### NixOS
 

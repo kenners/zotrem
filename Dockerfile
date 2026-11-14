@@ -4,9 +4,11 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN go generate ./pkg/db/... ./pkg/ui/... ./uikit/... && CGO_ENABLED=0 go build -ldflags "-s -w" -o /zotrem ./cmd/zotrem
+RUN mkdir -m 0700 /data
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /zotrem /zotrem
+COPY --from=build --chown=65532:65532 /data /data
 ENV ZOTREM_DATA_DIR=/data
 VOLUME /data
 EXPOSE 8000
