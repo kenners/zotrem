@@ -28,7 +28,7 @@ type DB struct {
 func New(path string) (*DB, error) {
 	if path != ":memory:" {
 		if dir := filepath.Dir(path); dir != "" && dir != "." {
-			if err := os.MkdirAll(dir, 0o755); err != nil {
+			if err := os.MkdirAll(dir, 0o700); err != nil {
 				return nil, errors.Wrapf(err, "mkdir %s", dir)
 			}
 		}
@@ -42,7 +42,22 @@ func New(path string) (*DB, error) {
 		conn.Close()
 		return nil, errors.Wrap(err, "migrate")
 	}
+	if path != ":memory:" {
+		if err := restrictFiles(path); err != nil {
+			conn.Close()
+			return nil, err
+		}
+	}
 	return &DB{conn: conn, queries: sqlite.New(conn)}, nil
+}
+
+func restrictFiles(path string) error {
+	for _, name := range []string{path, path + "-shm", path + "-wal"} {
+		if err := os.Chmod(name, 0o600); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return errors.Wrapf(err, "restrict permissions of %s", name)
+		}
+	}
+	return nil
 }
 
 func (d *DB) Close() error { return d.conn.Close() }

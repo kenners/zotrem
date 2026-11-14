@@ -88,6 +88,11 @@ func newRootCmd() *cobra.Command {
 			defer a.store.Close()
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
+			if n, err := a.store.InterruptSyncRuns("interrupted: zotrem stopped before the sync finished"); err != nil {
+				return err
+			} else if n > 0 {
+				a.log.Warn("marked unfinished syncs as interrupted", "count", n)
+			}
 			go a.engine.RunScheduler(ctx)
 
 			addr := fmt.Sprintf("%s:%d", bind, port)

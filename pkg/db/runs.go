@@ -167,3 +167,13 @@ func fromSqliteRun(r sqlite.SyncRun) SyncRun {
 		Trigger:    r.Trigger,
 	}
 }
+
+func (d *DB) InterruptSyncRuns(reason string) (int64, error) {
+	n, err := d.queries.InterruptSyncRuns(context.Background(), sqlite.InterruptSyncRunsParams{
+		Error:      reason,
+		FinishedAt: ts.NowPtr(),
+		Status:     RunStatusError,
+		Status_2:   RunStatusRunning,
+	})
+	return n, errors.Wrap(err, "interrupt sync runs")
+}
