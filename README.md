@@ -68,9 +68,8 @@ Environment variables:
 | Variable | Purpose |
 | --- | --- |
 | `ZOTREM_DATA_DIR` | Directory for `zotrem.db` (default: the user config directory, e.g. `~/.config/zotrem`). |
-| `ZOTREM_PASSWORD` | When set, the web UI and API require HTTP basic auth with this password (any user name). |
 
-The web UI has no login of its own; bind it to localhost (the default) or a private network, or set `ZOTREM_PASSWORD`.
+The web UI and API have no login of their own; bind them to localhost (the default) or a trusted private network.
 The Zotero API key and reMarkable tokens are stored unencrypted in the database, so protect the data directory.
 
 ## How a sync works

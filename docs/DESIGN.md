@@ -72,5 +72,5 @@ All state tags share a configurable prefix (default `zotrem:`): `synced`, `annot
 
 The Zotero API key and reMarkable tokens are stored in the SQLite database in the data directory, and the settings page
 shows the Zotero API key, so access to the web UI is access to the credentials. zotrem binds to localhost by default; to
-reach it from the local network, bind to `0.0.0.0` on a trusted network. Setting `ZOTREM_PASSWORD` adds HTTP basic auth
-through one middleware that wraps every route: the web UI, the REST API and the OpenAPI docs.
+reach it from the local network, bind to `0.0.0.0` on a trusted network. There is no built-in authentication; put a
+reverse proxy with authentication in front of zotrem if it must be reachable from anywhere less trusted.
