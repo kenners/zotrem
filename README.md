@@ -41,14 +41,16 @@ go tool mage build   # generates the code and installs zotrem to ~/go/bin
 
 ### Docker
 
-There is no published image; build one from a clone and run it with a named volume for the data:
+Every push to `main` publishes an image to `ghcr.io/kenners/zotrem` (tags `latest` and the short commit SHA), and
+tagging `vX.Y.Z` publishes it as `X.Y.Z`, without the `v`. The package is private, like the repository, so log in
+first with a token that has `read:packages`:
 
 ```sh
-git clone https://github.com/kenners/zotrem
-cd zotrem
-docker build -t zotrem .
-docker run -d --name zotrem -p 8000:8000 -v zotrem-data:/data zotrem
+docker login ghcr.io -u <github-user>
+docker run -d --name zotrem -p 8000:8000 -v zotrem-data:/data ghcr.io/kenners/zotrem:latest
 ```
+
+To build one yourself instead, run `docker build -t zotrem .` in a clone.
 
 The container runs as an unprivileged user (UID 65532). To keep the data in a host directory instead of a named
 volume, make that directory writable by that user first, for example `sudo chown 65532:65532 /srv/zotrem`, then
