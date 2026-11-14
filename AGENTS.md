@@ -35,6 +35,13 @@ Never hand-edit generated code. `mage build` regenerates before compiling; edit 
 - `pkg/db/queries/*.sql`, `pkg/db/schema/*.sql` → sqlc (`pkg/db/internal/sqlite`) — gitignored
 - API route definitions → OpenAPI (`docs/openapi.json`) — committed as the API contract
 
+## Nix
+
+- `flake.nix` builds the package (`nix/package.nix`), the NixOS module (`nix/module.nix`) and a VM test (`nix/test.nix`)
+- After changing `go.mod` or `go.sum`, update `vendorHash` in `flake.nix`: set it to `nixpkgs.lib.fakeHash`, run
+  `nix build .#zotrem` and copy the hash from the error
+- `nix flake check` runs the Go tests and the VM test (needs KVM)
+
 ## Database
 
 - SQLite via sqlc — queries in `pkg/db/queries`, schema in `pkg/db/schema`

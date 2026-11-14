@@ -38,6 +38,40 @@ Or run the container image:
 docker run -d --name zotrem -p 8000:8000 -v zotrem-data:/data ghcr.io/kenners/zotrem
 ```
 
+### NixOS
+
+The flake provides a package and a NixOS module that runs `zotrem serve` as a sandboxed systemd service with its
+state in `/var/lib/zotrem`. It needs nixpkgs 26.05 or newer, for Go 1.26.5 or later.
+
+```nix
+{
+  inputs.zotrem = {
+    url = "github:kenners/zotrem";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = { nixpkgs, zotrem, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      modules = [
+        zotrem.nixosModules.default
+        {
+          services.zotrem = {
+            enable = true;
+            listenAddress = "127.0.0.1";
+            port = 8000;
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
+zotrem has no authentication, so keep `listenAddress` on localhost behind a reverse proxy that adds it, or open the
+port only on a trusted interface with `networking.firewall.interfaces.<name>.allowedTCPPorts`. `openFirewall` opens
+the port on every interface. Back up `/var/lib/zotrem`: it holds the credentials and the record of which papers are
+on the tablet, and without it zotrem sends every tagged paper again.
+
 ## Run
 
 ```sh
@@ -68,9 +102,8 @@ Environment variables:
 | Variable | Purpose |
 | --- | --- |
 | `ZOTREM_DATA_DIR` | Directory for `zotrem.db` (default: the user config directory, e.g. `~/.config/zotrem`). |
-| `ZOTREM_PASSWORD` | When set, the web UI and API require HTTP basic auth with this password (any user name). |
 
-The web UI has no login of its own; bind it to localhost (the default) or a private network, or set `ZOTREM_PASSWORD`.
+The web UI and API have no login of their own; bind them to localhost (the default) or a trusted private network.
 The Zotero API key and reMarkable tokens are stored unencrypted in the database, so protect the data directory.
 
 ## How a sync works

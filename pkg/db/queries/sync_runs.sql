@@ -24,3 +24,6 @@ SELECT * FROM sync_events WHERE run_id = ? ORDER BY id;
 
 -- name: ListDocumentEvents :many
 SELECT * FROM sync_events WHERE document_id = ? ORDER BY id DESC LIMIT ?;
+
+-- name: InterruptSyncRuns :execrows
+UPDATE sync_runs SET error = ?, finished_at = ?, status = ? WHERE status = ?;
